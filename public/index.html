@@ -12,6 +12,27 @@
 	</head>
 	<!-- Codepony Diamond -->
 	<body>
+		<section class="ircclient">
+			<div class="coverwindow" id="authdialog">
+				<div class="wrapper">
+					<h1 class="grade1">Teemant</h1>
+					<i class="grade3" id="connmsg">Think of a nickname</i>
+					<form action="" id="IRCConnector">
+						<label for="nickname">Nickname</label>
+						<input type="text" name="nickname" id="nickname" value="testuser">
+						<label for="channel">Channel</label>
+						<input type="text" name="channel" id="channel" value="#diamond">
+						<label for="server">Server</label>
+						<input type="text" name="server" id="server" value="irc.icynet.ml">
+						<label for="port">Port</label>
+						<input type="number" name="port" id="port" value="6667">
+						<input type="submit" value="Connect">
+					</form>
+				</div>
+			</div>
+			<div class="coverwindow" id="chat" style="display: none;">
 
+			</div>
+		</section>
 	</body>
 </html>
