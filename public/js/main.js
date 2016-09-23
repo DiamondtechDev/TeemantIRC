@@ -3,13 +3,10 @@ window.irc = {
 	primaryFrame: null,
 	timestamps: true,
 	timestampFormat: "HH:mm:ss",
-	supportedPrefixes: "@%+",
-	modeTranslation: {
-		"o": "@",
-		"h": "%",
-		"v": "+"
-	}
+	serverData: {}
 };
+
+window.clientdom = {connector: {}};
 
 /*********************\
 |**                 **|
@@ -147,21 +144,21 @@ function addClass(element, cl) {
 \*********************/
 
 class Nicklist {
-	constructor(buffer, frame) {
+	constructor(buffer) {
 		this.buffer = buffer;
-		this.frame = frame;
 		this.nicks = [];
 	}
 
 	sort() {
+		let spfx = irc.serverData[this.buffer.server].supportedPrefixes
 		this.nicks.sort(function (a,b) {
-			let rex = new RegExp('^['+irc.supportedPrefixes+']');
+			let rex = new RegExp('^['+spfx+']');
 			let nicks = [a.prefix.replace(rex,'').toLowerCase(), b.prefix.replace(rex,'').toLowerCase()];
 			let prefix = [];
-			if (rex.test(a.prefix)) prefix.push(irc.supportedPrefixes.indexOf(a.prefix[0])); 
-				else prefix.push(irc.supportedPrefixes.length+1);
-			if (rex.test(b.prefix)) prefix.push(irc.supportedPrefixes.indexOf(b.prefix[0])); 
-				else prefix.push(irc.supportedPrefixes.length+1);
+			if (rex.test(a.prefix)) prefix.push(spfx.indexOf(a.prefix[0])); 
+				else prefix.push(spfx.length+1);
+			if (rex.test(b.prefix)) prefix.push(spfx.indexOf(b.prefix[0])); 
+				else prefix.push(spfx.length+1);
 			if (prefix[0] < prefix[1]) return -1;
 			if (prefix[0] > prefix[1]) return 1;
 			if (nicks[0] > nicks[1]) return 1;
@@ -177,13 +174,21 @@ class Nicklist {
 		let str = document.createElement("div");
 		str.className = "nick";
 		str.setAttribute('id', 'nick-'+nick.nickname);
-		let construct = "<span class='prefix'>"+nick.prefix+"</span><span class='nickname'>"+nick.nickname+"</span>";
+		let construct = "";
+
+		if(nick.prefix != "")
+			construct += "<span class='prefix'>"+nick.prefix+"</span>";
+		else
+			construct += "<span class='no-prefix'>&nbsp;</span>";
+
+		construct += "<span class='nickname'>"+nick.nickname+"</span>";
 		str.innerHTML = construct;
-		this.frame.appendChild(str);
+		clientdom.nicklist.appendChild(str);
 	}
 
 	render() {
-		this.frame.innerHTML = "";
+		clientdom.nicklist.innerHTML = "";
+		this.sort();
 		for(let n in this.nicks) {
 			let nick = this.nicks[n];
 			this.appendToList(nick);
@@ -194,6 +199,10 @@ class Nicklist {
 		let newbie = { nickname: nickname, prefix: "", modes: [] }
 		this.nicks.push(newbie);
 		this.render();
+	}
+
+	nickAddObject(obj) {
+		this.nicks.push(obj);
 	}
 
 	nickRemove(nickname) {
@@ -268,21 +277,33 @@ class Tab {
 	constructor(buffer) {
 		this.buffer = buffer;
 		this.element = null;
+		this.closeRequested = false;
 	}
 
 	// Create a tab element
-	renderTab(frame) {
-		let internals = "<span id='title'>"+ this.buffer.title +"</span><span id='unread'></span><span id='close'>x</span>";
+	renderTab() {
+		let internals = "<span id='title'>"+ this.buffer.title +"</span><span id='unread' class='none'></span>";
+		
 		let ttt = document.createElement('div');
 		ttt.innerHTML = internals;
 		ttt.className = "tab";
 		ttt.setAttribute('id', 'tab-'+this.name);
-		frame.appendChild(ttt);
+		clientdom.tabby.appendChild(ttt);
 		this.element = ttt;
 
+		if(this.buffer.type != "server") {
+			ttt.innerHTML += "<span id='close'>x</span>"
+			ttt.querySelector('#close').addEventListener('click', () => {
+				this.close();
+			}, false);
+		}
+
 		ttt.addEventListener('click', () => {
+			if(this.closeRequested) return;
+
 			if(this.buffer.active)
 				return;
+
 			irc.chat.render(this.buffer);
 		}, false);
 	}
@@ -309,7 +330,8 @@ class Tab {
 	}
 
 	close() {
-		console.log('close requested for '+this.buffer.title);
+		this.closeRequested = true;
+		this.buffer.closeBuffer();
 	}
 }
 
@@ -326,20 +348,13 @@ class Buffer {
 		this.name = buffername;
 		this.title = tabname;
 		this.type = type;
-
-		this.nicklistDisplayed = false;
 		this.active = false;
 
 		this.tab = new Tab(this);
-		this.tab.renderTab(irc.primaryFrame.querySelector('.tabby'));
+		this.tab.renderTab(clientdom.tabby);
 
-		if(type == "channel") {
-			this.nicklistDisplayed = true;
-			this.nicklist = new Nicklist(this);
-		}
-
-		this.frame = irc.primaryFrame.querySelector('#chat');
-		this.letterbox = this.frame.querySelector('.letterbox');
+		if(type == "channel")
+			this.nicklist = new Nicklist(this, clientdom.nicklist);
 	}
 
 	render() {
@@ -348,31 +363,30 @@ class Buffer {
 		this.unreadCount = 0;
 		this.tab.setUnreadCount(0);
 
-		let chat = this.frame.querySelector('.chatarea');
-		let topicbar = chat.querySelector('.topicbar');
-		let nicklist = chat.querySelector('.nicklist');
+		clientdom.chat.className = "chatarea";
+		clientdom.nicklist.innerHTML = "";
+		clientdom.topicbar.innerHTML = "";
 
-		chat.className = "chatarea";
-		nicklist.innerHTML = "";
-		topicbar.innerHTML = "";
-
-		if(this.nicklistDisplayed) {
-			addClass(chat, 'vnicks');
+		if(this.nicklist) {
+			addClass(clientdom.chat, 'vnicks');
+			this.nicklist.render();
 		}
 
 		if(this.topic != null && this.topic != "") {
-			addClass(chat, 'vtopic');
-			topicbar.innerHTML = this.topic;
+			addClass(clientdom.chat, 'vtopic');
+			clientdom.topicbar.innerHTML = this.topic;
 		}
 
 		this.renderMessages();
-		this.letterbox.scrollTop = this.lastscroll;
+		clientdom.letterbox.scrollTop = this.lastscroll;
+
+		clientdom.currentNickname.innerHTML = irc.serverData[this.server].my_nick;
 	}
 
 	renderMessages() {
 		if(!this.active) return;
 
-		this.letterbox.innerHTML = "";
+		clientdom.letterbox.innerHTML = "";
 
 		for(let t in this.messages) {
 			let mesg = this.messages[t];
@@ -386,21 +400,36 @@ class Buffer {
 
 		let construct = "";
 		if(irc.timestamps)
-			construct += "<span class='timestamp'>"+meta.time.format(irc.timestampFormat)+"</span>";
+			construct += "<span class='timestamp'>"+meta.time.format(irc.timestampFormat)+"</span>&nbsp;";
 
-		if(meta.sender != null)
-			construct += "<span class='sender'>"+meta.sender+"</span>";
-		else
+		if(meta.sender != null && meta.type != "action") {
+			construct += "<span class='sender'>"+meta.sender+"</span>&nbsp;";
+		} else {
+			construct += "<span class='asterisk'>*</span>&nbsp;";
 			addClass(mesgConstr, "no_sender");
+		}
 
-		construct += "<span class='content'>"+meta.message+"</span>";
+		if(meta.type == "action")
+			construct += "<span class='actionee'>"+meta.sender+"</span>&nbsp;<span class='content'>"+meta.message+"</span>";
+		else
+			construct += "<span class='content'>"+meta.message+"</span>";
 
 		mesgConstr.innerHTML = construct;
-		this.letterbox.appendChild(mesgConstr);
+		clientdom.letterbox.appendChild(mesgConstr);
 
-		let lFactor = this.letterbox.offsetHeight + this.letterbox.scrollTop
-		if(lFactor > this.letterbox.scrollHeight - 100)
-			this.letterbox.scrollTop = this.letterbox.scrollHeight;
+		let lFactor = clientdom.letterbox.offsetHeight + clientdom.letterbox.scrollTop
+		if(lFactor > clientdom.letterbox.scrollHeight - 100)
+			clientdom.letterbox.scrollTop = clientdom.letterbox.scrollHeight;
+	}
+
+	topicChange(topic) {
+		if(this.active) {
+			clientdom.topicbar.innerHTML = topic;
+
+			if(this.topic == null)
+				addClass(clientdom.chat, "vtopic");
+		}
+		this.topic = topic;
 	}
 
 	addMessage(message, sender, type) {
@@ -417,28 +446,20 @@ class Buffer {
 
 	switchOff() {
 		this.tab.setActive(false);
-		this.lastscroll = this.letterbox.scrollTop;
+		this.lastscroll = clientdom.letterbox.scrollTop;
 		this.active = false;
 	}
 
-	close() {
-
+	closeBuffer() {
+		irc.chat.closeBuffer(this);
 	}
 }
 
 class IRCConnector {
-	constructor(frame) {
-		this.frame = frame;
-		this.messenger = frame.querySelector('#connmsg');
-		this.f_form = frame.querySelector('#IRCConnector');
-
-		this.f_nickname = this.f_form.querySelector('#nickname');
-		this.f_channel = this.f_form.querySelector('#channel');
-		this.f_server = this.f_form.querySelector('#server');
-		this.f_port = this.f_form.querySelector('#port');
+	constructor() {
 		this.formLocked = false;
 
-		this.f_form.onsubmit = (e) => {
+		clientdom.connector.form.onsubmit = (e) => {
 			if(this.formLocked) {
 				e.preventDefault(); 
 				return false;
@@ -456,10 +477,10 @@ class IRCConnector {
 	validateForm(event) {
 		event.preventDefault();
 
-		let nickname = this.f_nickname.value;
-		let channel = this.f_channel.value;
-		let server = this.f_server.value;
-		let port = this.f_port.value;
+		let nickname = clientdom.connector.nickname.value;
+		let channel = clientdom.connector.channel.value;
+		let server = clientdom.connector.server.value;
+		let port = clientdom.connector.port.value;
 
 		if (!window.validators.nickname(nickname)) {
 			this.authMessage("Erroneous nickname!", true);
@@ -515,20 +536,19 @@ class IRCConnector {
 	}
 
 	authMessage(message, error) {
-		this.messenger.innerHTML = "<span class='msg"+(error?" error":"")+"'>"+message+"</span>";
+		clientdom.connector.messenger.innerHTML = "<span class='msg"+(error?" error":"")+"'>"+message+"</span>";
 	}
 
 	authComplete() {
-		this.frame.style.display = "none";
+		clientdom.connector.frame.style.display = "none";
 		this.formLocked = false;
 	}
 }
 
 class IRCChatWindow {
-	constructor(frame) {
-		this.frame = frame;
+	constructor() {
 		this.buffers = [];
-		this.frame.style.display = "none";
+		clientdom.frame.style.display = "none";
 		this.firstServer = true;
 		this.currentBuffer = null;
 	}
@@ -563,7 +583,7 @@ class IRCChatWindow {
 		return result;
 	}
 
-	getBufferByNameServer(server, channel) {
+	getBufferByServerName(server, channel) {
 		let result = null;
 		for (let t in this.buffers) {
 			let buf = this.buffers[t];
@@ -585,7 +605,20 @@ class IRCChatWindow {
 
 	newServerBuffer(serverinfo) {
 		if(this.firstServer) {
-			this.frame.style.display = "block";
+			clientdom.frame.style.display = "block";
+		}
+
+		let prefixes = "";
+
+		for(let v in serverinfo.supportedModes) {
+			prefixes += serverinfo.supportedModes[v];
+		}
+
+		irc.serverData[serverinfo.address] = {
+			modeTranslation: serverinfo.supportedModes,
+			supportedPrefixes: prefixes,
+			network: serverinfo.network,
+			my_nick: serverinfo.nickname
 		}
 
 		let newServer = new Buffer(serverinfo.address, serverinfo.address, serverinfo.network, "server");
@@ -595,7 +628,7 @@ class IRCChatWindow {
 	}
 
 	createBuffer(server, name, type, autoswitch) {
-		let buf = this.getBufferByNameServer(server, name);
+		let buf = this.getBufferByServerName(server, name);
 		if(buf) {
 			if(autoswitch)
 				this.render(buf);
@@ -610,16 +643,91 @@ class IRCChatWindow {
 	}
 
 	closeBuffer(buffer) {
-		// todo: close
+		if(buffer.type == "server") return; // Don't close server buffers, lol
+		if(buffer.type == "channel") console.log("TODO: PART");
+		let bufIndex = this.buffers.indexOf(buffer);
+
+		if(buffer.active) {
+			console.log(bufIndex);
+			if (bufIndex == 0) {
+				if(this.buffers[bufIndex+1]) {
+					this.render(this.buffers[bufIndex+1]);
+				}
+			} else {
+				this.render(this.buffers[bufIndex-1]);
+			}
+		}
+
+		buffer.tab.element.remove();
+		this.buffers.splice(bufIndex, 1);
 	}
 
 	messageBuffer(name, server, message) {
-		let buf = this.getBufferByNameServer(server, name);
+		let buf = this.getBufferByServerName(server, name);
 
 		if(buf == null)
 			buf = this.createBuffer(server, name, "message", false);
 
 		buf.addMessage(message.message, message.from, message.type);
+	}
+
+	buildNicklist(channel, server, nicks) {
+		let buf = this.getBufferByServerName(server, channel);
+
+		if(buf == null)
+			return;
+
+		for(let n in nicks) {
+			let nick = {nickname: "", prefix: ""};
+
+			if(irc.serverData[buf.server].supportedPrefixes.split('').indexOf(nicks[n].substring(0, 1)) != -1) {
+				nick.prefix = nicks[n].substring(0, 1);
+				nick.nickname = nicks[n].substring(1);
+			} else {
+				nick.nickname = nicks[n];
+			}
+
+			buf.nicklist.nickAddObject(nick);
+		}
+
+		if(buf.active)
+			buf.nicklist.render();
+	}
+
+	nickChange(server, oldNick, newNick) {
+		let buffers = this.getBuffersByServer(server);
+
+		if(irc.serverData[server].my_nick == oldNick) {
+			irc.serverData[server].my_nick = newNick;
+
+			let activeBuf = this.getActiveBuffer();
+
+			if(activeBuf.server == server) {
+				activeBuf.my_nickname.innerHTML = newNick;
+			}
+		}
+
+		for(let i in buffers) {
+			let buffer = buffers[i];
+
+			if(buffer.type != "channel") continue;
+			if(buffer.nicklist.getNickIndex(oldNick) == null) continue;
+
+			buffer.nicklist.nickChange(oldNick, newNick);
+			buffer.addMessage(oldNick+" is now known as "+newNick, null, "nick");
+		}
+	}
+
+	topicChange(channel, server, topic, changer) {
+		let buf = this.getBufferByServerName(server, channel);
+		
+		if (!buf) return;
+
+		buf.topicChange(topic);
+		if(changer)
+			buf.addMessage(changer+" set the topic of "+channel+ " to \""+topic+"\"", null, "topic");
+		else
+			buf.addMessage("Topic of "+channel+ " is \""+topic+"\"", null, "topic");
 	}
 
 	render(buffer) {
@@ -639,11 +747,27 @@ class IRCChatWindow {
 \**************************/
 
 window.onload = function() {
+	irc.primaryFrame = document.querySelector('.ircclient');
+
+	clientdom.connector['frame'] = irc.primaryFrame.querySelector('#authdialog');
+	clientdom.connector['messenger'] = clientdom.connector.frame.querySelector('#connmsg');
+	clientdom.connector['form'] = clientdom.connector.frame.querySelector('#IRCConnector');
+	clientdom.connector['nickname'] = clientdom.connector.form.querySelector('#nickname');
+	clientdom.connector['channel'] = clientdom.connector.form.querySelector('#channel');
+	clientdom.connector['server'] = clientdom.connector.form.querySelector('#server');
+	clientdom.connector['port'] = clientdom.connector.form.querySelector('#port');
+	clientdom['tabby'] = irc.primaryFrame.querySelector('.tabby')
+	clientdom['frame'] = irc.primaryFrame.querySelector('#chat');
+	clientdom['chat'] = clientdom.frame.querySelector('.chatarea');
+	clientdom['letterbox'] = clientdom.frame.querySelector('.letterbox');
+	clientdom['nicklist'] = clientdom.frame.querySelector('.nicklist');
+	clientdom['currentNickname'] = clientdom.frame.querySelector('.my_nickname');
+	clientdom['topicbar'] = clientdom.chat.querySelector('.topicbar');
+
 	irc.socket = io.connect('http://localhost:8080');
 
-	irc.primaryFrame = document.querySelector('.ircclient');
-	irc.auther = new IRCConnector(irc.primaryFrame.querySelector("#authdialog"));
-	irc.chat = new IRCChatWindow(irc.primaryFrame.querySelector("#chat"));
+	irc.auther = new IRCConnector();
+	irc.chat = new IRCChatWindow();
 
 	irc.socket.on('connect', function (data) {
 		irc.socketUp = true;
@@ -664,8 +788,25 @@ window.onload = function() {
 			case "event_join_channel":
 				irc.chat.createBuffer(data.server, data.name, "channel", true);
 				break;
-			case "server_message":
+			case "message":
 				irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.from});
+				break;
+			case "channel_nicks":
+				irc.chat.buildNicklist(data.channel, data.server, data.nicks);
+				break;
+			case "channel_topic":
+				if(data['topic'] && data['set_by'])
+					irc.chat.topicChange(data.channel, data.server, data.topic, data['set_by']);
+				else if(data['topic'])
+					irc.chat.topicChange(data.channel, data.server, data.topic, null);
+				else if(data['set_by'])
+					irc.chat.messageBuffer(data.channel, data.server, {message: "Topic set by "+data.set_by+" on "+new Date(data.time), type: "topic", from: null});
+				break;
+			case "nick_change":
+				irc.chat.nickChange(data.server, data.nick, data.newNick);
+				break;
+			case "server_message":
+				irc.chat.messageBuffer(data.server, data.server, {message: data.message, type: data.messageType, from: null});
 				break;
 			case "connect_message":
 				irc.auther.authMessage(data.data, data.error);

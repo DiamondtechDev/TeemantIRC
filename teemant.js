@@ -38,17 +38,32 @@ io.sockets.on('connection', function (socket) {
 
 		setTimeout(function() {
 			console.log("fake connect");
-			socket.emit('act_client', {type: 'event_connect', address: connectiondata.server, network: "IcyNet", raw: connectiondata});
-			socket.emit('act_client', {type: 'server_message', messageType: "notice", server: connectiondata.server, to: connectiondata.server, from: null, message: "Connection established"});
+			socket.emit('act_client', {type: 'event_connect', address: connectiondata.server, network: "IcyNet", supportedModes: {"o": "@", "h": "%", "v": "+"}, nickname: connectiondata.nickname, raw: connectiondata});
+			socket.emit('act_client', {type: 'server_message', messageType: "notice", server: connectiondata.server, message: "Connection established"});
 		}, 2000);
 
 		setTimeout(function() {
 			console.log("fake channel");
 			socket.emit('act_client', {type: 'event_join_channel', server: connectiondata.server, name: "#channel"});
-			// Spam the client with messages (for testing)
-			setInterval(function() {
-				socket.emit('act_client', {type: 'server_message', messageType: "privmsg", server: connectiondata.server, to: "#channel", from: "horse", message: "I like ponies"});
-			}, 1000);
+			socket.emit('act_client', {type: 'channel_nicks', channel: "#channel", server: connectiondata.server, nicks: ["+horse", "@scoper", "@aspire", "+random", "lol"]});
+			socket.emit('act_client', {type: 'channel_topic', channel: "#channel", server: connectiondata.server, topic: "This channel is the best."});
+			socket.emit('act_client', {type: 'channel_topic', channel: "#channel", server: connectiondata.server, set_by: "horse", time: Date.now()});
+			socket.emit('act_client', {type: 'message', messageType: "privmsg", server: connectiondata.server, to: "#channel", from: "horse", message: "I like ponies"});
+
+			setTimeout(function() {
+				socket.emit('act_client', {type: 'nick_change', server: connectiondata.server, nick: "horse", newNick: "pony"});
+			}, 2000)
+
+			setTimeout(function() {
+				socket.emit('act_client', {type: 'message', messageType: "action", server: connectiondata.server, to: "#channel", from: "pony", message: "Is the greatest pony fan"});
+			}, 3000)
+
+			setTimeout(function() {
+				socket.emit('act_client', {type: 'event_join_channel', server: connectiondata.server, name: "#poni"});
+				socket.emit('act_client', {type: 'channel_nicks', channel: "#poni", server: connectiondata.server, nicks: ["+horse", "@Diamond", "@aspire", "+random", "lol"]});
+				socket.emit('act_client', {type: 'channel_topic', channel: "#poni", server: connectiondata.server, topic: "This channel is the second best."});
+				socket.emit('act_client', {type: 'channel_topic', channel: "#poni", server: connectiondata.server, set_by: "Diamond", time: Date.now()});
+			}, 5000)
 		}, 4000);
 	});
 });

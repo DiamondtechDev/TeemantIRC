@@ -202,7 +202,7 @@ body
                 height: 46px;
                 width: 100%;
                 background-color: #00c7e0;
-                .nickname
+                .my_nickname
                     background-color: #00efef;
                     margin: 5px;
                     padding: 7px;
@@ -230,7 +230,6 @@ body
 
 .message.type_simple
     .timestamp
-        margin-right: 5px;
         color: #696969;
         &:before
             color: #607D8B;
@@ -239,9 +238,19 @@ body
             color: #607D8B;
             content: "]";
     .sender
-        margin-right: 5px;
         color: #3F51B5;
         &:before
             content: "<";
         &:after
             content: ">";
+
+.m_topic .content
+    color: #03A9F4;
+    font-weight: bold;
+
+.m_nick .content
+    color: #FF9800;
+    font-weight: bold;
+
+.m_action .actionee
+    color: #3f51b5;

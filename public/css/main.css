@@ -228,7 +228,7 @@ body {
   width: 100%;
   background-color: #00c7e0;
 }
-.ircclient #chat .ircwrapper .input .nickname {
+.ircclient #chat .ircwrapper .input .my_nickname {
   background-color: #00efef;
   margin: 5px;
   padding: 7px;
@@ -256,7 +256,6 @@ body {
   box-shadow: inset 4px 4px 8px #d8d8d8;
 }
 .message.type_simple .timestamp {
-  margin-right: 5px;
   color: #696969;
 }
 .message.type_simple .timestamp:before {
@@ -268,7 +267,6 @@ body {
   content: "]";
 }
 .message.type_simple .sender {
-  margin-right: 5px;
   color: #3f51b5;
 }
 .message.type_simple .sender:before {
@@ -276,4 +274,15 @@ body {
 }
 .message.type_simple .sender:after {
   content: ">";
+}
+.m_topic .content {
+  color: #03a9f4;
+  font-weight: bold;
+}
+.m_nick .content {
+  color: #ff9800;
+  font-weight: bold;
+}
+.m_action .actionee {
+  color: #3f51b5;
 }
