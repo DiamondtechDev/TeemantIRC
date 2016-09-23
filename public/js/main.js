@@ -75,11 +75,10 @@ class Tab {
 		frame.appendChild(ttt);
 		this.element = ttt;
 
-		let instance = this;
-		ttt.addEventListener('click', function() {
-			if(instance.buffer.active)
+		ttt.addEventListener('click', () => {
+			if(this.buffer.active)
 				return;
-			irc.chat.render(instance.buffer);
+			irc.chat.render(this.buffer);
 		}, false);
 	}
 
@@ -114,6 +113,7 @@ class Buffer {
 		this.topic = null;
 		this.input = "";
 		this.lastscroll = 0;
+		this.unreadCount = 0;
 
 		this.server = servername;
 		this.name = buffername;
@@ -136,6 +136,8 @@ class Buffer {
 	render() {
 		this.active = true;
 		this.tab.setActive(true);
+		this.unreadCount = 0;
+		this.tab.setUnreadCount(0);
 
 		let chat = this.frame.querySelector('.chatarea');
 		let topicbar = chat.querySelector('.topicbar');
@@ -162,10 +164,9 @@ class Buffer {
 
 		this.letterbox.innerHTML = "";
 
-		let instance = this;
 		for(let t in this.messages) {
-			let mesg = instance.messages[t];
-			instance.appendMessage({message: mesg.message, sender: mesg.sender, type: mesg.type, time: mesg.time});
+			let mesg = this.messages[t];
+			this.appendMessage({message: mesg.message, sender: mesg.sender, type: mesg.type, time: mesg.time});
 		}
 	}
 
@@ -194,6 +195,10 @@ class Buffer {
 
 		if(this.active)
 			this.appendMessage(mesg);
+		else
+			this.unreadCount += 1;
+
+		this.tab.setUnreadCount(this.unreadCount);
 	}
 
 	close() {
@@ -203,8 +208,6 @@ class Buffer {
 
 class IRCConnector {
 	constructor(frame) {
-		let instance = this;
-
 		this.frame = frame;
 		this.messenger = frame.querySelector('#connmsg');
 		this.f_form = frame.querySelector('#IRCConnector');
@@ -215,18 +218,18 @@ class IRCConnector {
 		this.f_port = this.f_form.querySelector('#port');
 		this.formLocked = false;
 
-		this.f_form.onsubmit = function(e) {
-			if(instance.formLocked) {
+		this.f_form.onsubmit = (e) => {
+			if(this.formLocked) {
 				e.preventDefault(); 
 				return false;
 			}
 
-			instance.formLocked = true;
+			this.formLocked = true;
 
-			let success = instance.validateForm(e);
+			let success = this.validateForm(e);
 
 			if(!success)
-				instance.formLocked = false;
+				this.formLocked = false;
 		}
 	}
 
@@ -397,7 +400,6 @@ class IRCChatWindow {
 	}
 
 	render(buffer) {
-		let instance = this;
 		let activeNow = this.getActiveBuffer();
 
 		if(activeNow) {
