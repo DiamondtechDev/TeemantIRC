@@ -131,6 +131,21 @@ body {
   cursor: pointer;
   font-weight: 600;
 }
+.ircclient #chat .ircwrapper .toolbar .tabby .tab #unread {
+  display: inline-block;
+  min-width: 22px;
+  height: 22px;
+  background-color: #bf0000;
+  border: 1px solid #b00;
+  box-shadow: inset 2px 2px 3px #f00;
+  text-align: center;
+  font-size: 10px;
+  margin: 0 5px;
+  border-radius: 100%;
+}
+.ircclient #chat .ircwrapper .toolbar .tabby .tab #unread.none {
+  display: none;
+}
 .ircclient #chat .ircwrapper .toolbar .tabby .tab #close {
   display: inline-block;
   width: 12px;
@@ -174,6 +189,9 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 .ircclient #chat .ircwrapper .chatarea .nicklist {
   width: 280px;
@@ -187,6 +205,9 @@ body {
 }
 .ircclient #chat .ircwrapper .chatarea.vnicks .nicklist {
   display: block;
+}
+.ircclient #chat .ircwrapper .chatarea.vnicks .nicklist.forceopen {
+  display: block !important;
 }
 .ircclient #chat .ircwrapper .chatarea.vnicks .letterbox {
   right: 301px;
@@ -233,4 +254,26 @@ body {
   border: 1px solid #929292;
   border-left: 0;
   box-shadow: inset 4px 4px 8px #d8d8d8;
+}
+.message.type_simple .timestamp {
+  margin-right: 5px;
+  color: #696969;
+}
+.message.type_simple .timestamp:before {
+  color: #607d8b;
+  content: "[";
+}
+.message.type_simple .timestamp:after {
+  color: #607d8b;
+  content: "]";
+}
+.message.type_simple .sender {
+  margin-right: 5px;
+  color: #3f51b5;
+}
+.message.type_simple .sender:before {
+  content: "<";
+}
+.message.type_simple .sender:after {
+  content: ">";
 }

@@ -48,7 +48,7 @@ io.sockets.on('connection', function (socket) {
 			// Spam the client with messages (for testing)
 			setInterval(function() {
 				socket.emit('act_client', {type: 'server_message', messageType: "privmsg", server: connectiondata.server, to: "#channel", from: "horse", message: "I like ponies"});
-			}, 4000);
+			}, 1000);
 		}, 4000);
 	});
 });

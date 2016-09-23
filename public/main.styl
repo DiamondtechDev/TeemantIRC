@@ -120,6 +120,19 @@ body
                         color: #fff;
                         cursor: pointer;
                         font-weight: 600;
+                        #unread
+                            display: inline-block;
+                            min-width: 22px;
+                            height: 22px;
+                            background-color: #bf0000;
+                            border: 1px solid #b00;
+                            box-shadow: inset 2px 2px 3px #f00;
+                            text-align: center;
+                            font-size: 10px;
+                            margin: 0 5px;
+                            border-radius: 100%;
+                            &.none
+                                display: none;
                         #close
                             display: inline-block;
                             width: 12px;
@@ -157,6 +170,9 @@ body
                     bottom: 0;
                     left: 0;
                     right: 0;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
                 .nicklist
                     width: 280px;
                     position: absolute;
@@ -169,6 +185,8 @@ body
                 &.vnicks
                     .nicklist
                         display: block;
+                        &.forceopen
+                            display: block !important;
                     .letterbox
                         right: 301px;
                     .topicbar
@@ -209,3 +227,21 @@ body
                         border-left: 0;
                         box-shadow: inset 4px 4px 8px #d8d8d8;
                         
+
+.message.type_simple
+    .timestamp
+        margin-right: 5px;
+        color: #696969;
+        &:before
+            color: #607D8B;
+            content: "[";
+        &:after
+            color: #607D8B;
+            content: "]";
+    .sender
+        margin-right: 5px;
+        color: #3F51B5;
+        &:before
+            content: "<";
+        &:after
+            content: ">";
