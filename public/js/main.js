@@ -3,7 +3,8 @@ window.irc = {
 	primaryFrame: null,
 	timestamps: true,
 	timestampFormat: "HH:mm:ss",
-	serverData: {}
+	serverData: {},
+	chatType: "simple"
 };
 
 window.clientdom = {connector: {}};
@@ -124,7 +125,6 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
-
 function removeClass(element, cl) {
 	let classList = element.className.split(" ");
 	remove_str(classList, cl);
@@ -135,6 +135,44 @@ function addClass(element, cl) {
 	let classList = element.className.split(" ");
 	classList.push(cl);
 	element.className = classList.join(" ");
+}
+
+let composer = {
+	message: {
+		simple: function(time, sender, message, type) {
+			let element = document.createElement('div');
+			element.className = "message type_simple m_"+type;
+
+			if(irc.timestamps)
+				element.innerHTML += "<span class='timestamp'>"+time.format(irc.timestampFormat)+"</span>&nbsp;";
+
+			switch(type) {
+				case "action":
+					element.innerHTML += "<span class='asterisk'>*</span>&nbsp;<span class='actionee'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='content'>"+message+"</span>";
+					break;
+				case "part":
+				case "quit":
+				case "kick":
+					element.innerHTML += "<span class='arrowout'><--</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "&nbsp;"+message+"</span>";
+					break;
+				case "join":
+					element.innerHTML += "<span class='arrowin'>--></span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "&nbsp;"+message+"</span>";
+					break;
+				default:
+					if(sender) {
+						element.innerHTML += "<span class='sender'>"+sender+"</span>&nbsp;<span class='content'>"+message+"</span>";
+					} else {
+						element.innerHTML += "<span class='content'>"+message+"</span>";
+						addClass(element, "no_sender");
+					}
+					break;
+			}
+			return element;
+		}
+	}
 }
 
 /*********************\
@@ -187,6 +225,7 @@ class Nicklist {
 	}
 
 	render() {
+		if(!this.buffer.active) return;
 		clientdom.nicklist.innerHTML = "";
 		this.sort();
 		for(let n in this.nicks) {
@@ -197,6 +236,7 @@ class Nicklist {
 
 	nickAdd(nickname) {
 		let newbie = { nickname: nickname, prefix: "", modes: [] }
+		if(this.getNickIndex(nickname) != null) return;
 		this.nicks.push(newbie);
 		this.render();
 	}
@@ -213,7 +253,9 @@ class Nicklist {
 		else
 			return;
 
-		this.render();
+		if(!this.buffer.active) return;
+		let tt = clientdom.nicklist.querySelector('#nick-'+nickname);
+		if(tt) tt.remove();
 	}
 
 	nickChange(oldNickname, newNickname) {
@@ -395,26 +437,7 @@ class Buffer {
 	}
 
 	appendMessage(meta) {
-		let mesgConstr = document.createElement('div');
-		mesgConstr.className = "message type_simple m_"+meta.type;
-
-		let construct = "";
-		if(irc.timestamps)
-			construct += "<span class='timestamp'>"+meta.time.format(irc.timestampFormat)+"</span>&nbsp;";
-
-		if(meta.sender != null && meta.type != "action") {
-			construct += "<span class='sender'>"+meta.sender+"</span>&nbsp;";
-		} else {
-			construct += "<span class='asterisk'>*</span>&nbsp;";
-			addClass(mesgConstr, "no_sender");
-		}
-
-		if(meta.type == "action")
-			construct += "<span class='actionee'>"+meta.sender+"</span>&nbsp;<span class='content'>"+meta.message+"</span>";
-		else
-			construct += "<span class='content'>"+meta.message+"</span>";
-
-		mesgConstr.innerHTML = construct;
+		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type);
 		clientdom.letterbox.appendChild(mesgConstr);
 
 		let lFactor = clientdom.letterbox.offsetHeight + clientdom.letterbox.scrollTop
@@ -545,12 +568,42 @@ class IRCConnector {
 	}
 }
 
+class InputHandler {
+	constructor() {
+		this.history = [];
+
+		clientdom.input.onkeyup = (evt) => {
+			let key = evt.keyCode || evt.which || evt.charCode || 0;
+			if (key == 13) {
+				this.handleInput();
+			}
+		}
+
+		clientdom.send.onclick = (e) => {
+			this.handleInput();
+		}
+	}
+
+	handleInput() {
+		let inp = clientdom.input.value;
+		let buf = irc.chat.getActiveBuffer();
+
+		if(!buf) return;
+		if(inp.trim() == "") return;
+
+		irc.socket.emit("userinput", {target: buf.name, server: buf.server, message: inp, splitup: inp.split(" ")});
+		this.history.push(inp);
+		clientdom.input.value = "";
+	}
+}
+
 class IRCChatWindow {
 	constructor() {
 		this.buffers = [];
 		clientdom.frame.style.display = "none";
 		this.firstServer = true;
 		this.currentBuffer = null;
+		this.input_handler = new InputHandler();
 	}
 
 	getBufferByName(buffername) {
@@ -730,6 +783,46 @@ class IRCChatWindow {
 			buf.addMessage("Topic of "+channel+ " is \""+topic+"\"", null, "topic");
 	}
 
+	handleQuit(server, user, reason) {
+		let buffers = this.getBuffersByServer(server);
+
+		for(let i in buffers) {
+			let buffer = buffers[i];
+
+			if(buffer.type != "channel") continue;
+			if(buffer.nicklist.getNickIndex(user.nickname) == null) continue;
+
+			buffer.nicklist.nickRemove(user.nickname);
+			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+
+							  "</span> has quit <span class='reason'>"+reason+"</span>", user.nickname, "quit");
+		}
+	}
+
+	handleJoin(server, user, channel) {
+		let buffer = this.getBufferByServerName(server, channel);
+
+		if(!buffer) return;
+
+		buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has joined "+channel, user.nickname, "join");
+		buffer.nicklist.nickAdd(user.nickname);
+	}
+
+	handleLeave(server, user, channel, reason, kicker) {
+		let buffer = this.getBufferByServerName(server, channel);
+
+		if(!buffer) return;
+
+		if(kicker)
+			buffer.addMessage("has kicked "+user+" <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
+		else
+			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left "+
+								channel+(reason != null ? "<span class='reason'>"+reason+"</span>" : ""), user.nickname, "part");
+		if(kicker)
+			buffer.nicklist.nickRemove(user);
+		else
+			buffer.nicklist.nickRemove(user.nickname);
+	}
+
 	render(buffer) {
 		let activeNow = this.getActiveBuffer();
 
@@ -758,10 +851,12 @@ window.onload = function() {
 	clientdom.connector['port'] = clientdom.connector.form.querySelector('#port');
 	clientdom['tabby'] = irc.primaryFrame.querySelector('.tabby')
 	clientdom['frame'] = irc.primaryFrame.querySelector('#chat');
-	clientdom['chat'] = clientdom.frame.querySelector('.chatarea');
 	clientdom['letterbox'] = clientdom.frame.querySelector('.letterbox');
 	clientdom['nicklist'] = clientdom.frame.querySelector('.nicklist');
 	clientdom['currentNickname'] = clientdom.frame.querySelector('.my_nickname');
+	clientdom['input'] = clientdom.frame.querySelector('.userinput');
+	clientdom['send'] = clientdom.frame.querySelector('.sendbutton');
+	clientdom['chat'] = clientdom.frame.querySelector('.chatarea');
 	clientdom['topicbar'] = clientdom.chat.querySelector('.topicbar');
 
 	irc.socket = io.connect('http://localhost:8080');
@@ -786,10 +881,21 @@ window.onload = function() {
 				irc.chat.newServerBuffer(data);
 				break;
 			case "event_join_channel":
-				irc.chat.createBuffer(data.server, data.name, "channel", true);
+				if(data.user.nickname == irc.serverData[data.server].my_nick)
+					irc.chat.createBuffer(data.server, data.channel, "channel", true);
+				irc.chat.handleJoin(data.server, data.user, data.channel);
+				break;
+			case "event_kick_channel":
+				irc.chat.handleLeave(data.server, data.kickee, data.channel, data.reason, data.user);
+				break;
+			case "event_part_channel":
+				irc.chat.handleLeave(data.server, data.user, data.channel, data.reason);
+				break;
+			case "event_quit":
+				irc.chat.handleQuit(data.server, data.user, data.reason);
 				break;
 			case "message":
-				irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.from});
+				irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
 				break;
 			case "channel_nicks":
 				irc.chat.buildNicklist(data.channel, data.server, data.nicks);

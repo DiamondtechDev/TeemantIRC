@@ -114,6 +114,8 @@ body {
   position: absolute;
   left: 60px;
   right: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .ircclient #chat .ircwrapper .toolbar .tabby .tab {
   display: inline-block;
@@ -182,6 +184,7 @@ body {
   border-bottom: 1px solid #ddd;
   padding: 12px;
   display: none;
+  overflow: hidden;
 }
 .ircclient #chat .ircwrapper .chatarea .letterbox {
   position: absolute;
@@ -244,7 +247,7 @@ body {
   position: absolute;
   margin: 5px 0;
   left: 210px;
-  right: 46px;
+  right: 55px;
   top: 0;
 }
 .ircclient #chat .ircwrapper .input .inputwrapper input {
@@ -254,6 +257,18 @@ body {
   border: 1px solid #929292;
   border-left: 0;
   box-shadow: inset 4px 4px 8px #d8d8d8;
+}
+.ircclient #chat .ircwrapper .input .sendbutton {
+  background-image: url("/image/send.svg");
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 32px;
+  position: absolute;
+  height: 32px;
+  float: right;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
 }
 .message.type_simple .timestamp {
   color: #696969;
@@ -275,14 +290,53 @@ body {
 .message.type_simple .sender:after {
   content: ">";
 }
-.m_topic .content {
+.message.type_simple .arrowin,
+.message.type_simple .arrowout {
+  font-weight: bolder;
+}
+.message .reason:before,
+.message .hostmask:before {
+  content: "(";
+}
+.message .reason:after,
+.message .hostmask:after {
+  content: ")";
+}
+.message .reason:before,
+.message .hostmask:before,
+.message .reason:after,
+.message .hostmask:after {
+  color: #009606;
+  font-weight: bold;
+}
+.message .reason {
+  color: #bf0000;
+}
+.message .hostmask {
+  color: #004c88;
+}
+.message .arrowin {
+  color: #00ab00;
+}
+.message .arrowout {
+  color: #dc0f00;
+}
+.message.m_quit,
+.message.m_part,
+.message.m_kick {
+  color: #f00;
+}
+.message.m_join {
+  color: #008000;
+}
+.message.m_topic .content {
   color: #03a9f4;
   font-weight: bold;
 }
-.m_nick .content {
+.message.m_nick .content {
   color: #ff9800;
   font-weight: bold;
 }
-.m_action .actionee {
+.message.m_action .actionee {
   color: #3f51b5;
 }
