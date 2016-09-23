@@ -92,7 +92,7 @@ body
                 height: 56px
                 background-color: #00c7e0
                 position: relative
-                z-index: 10
+                z-index: 15
                 box-shadow: 2px 2px 4px #cecece
                 .logo
                     width: 56px;
@@ -105,6 +105,7 @@ body
                     position: absolute;
                     left: 60px;
                     right: 0;
+                    white-space: nowrap;
                     overflow-x: auto;
                     overflow-y: hidden;
                     .tab
@@ -124,14 +125,15 @@ body
                         font-weight: 600;
                         #unread
                             display: inline-block;
-                            min-width: 22px;
-                            height: 22px;
+                            min-width: 18px;
+                            height: 18px;
                             background-color: #bf0000;
                             border: 1px solid #b00;
                             box-shadow: inset 2px 2px 3px #f00;
                             text-align: center;
-                            font-size: 10px;
+                            font-size: 12px;
                             margin: 0 5px;
+                            line-height: 20px;
                             border-radius: 100%;
                             &.none
                                 display: none;
@@ -156,6 +158,21 @@ body
                 top: 56px;
                 width: 100%;
                 bottom: 46px;
+                .smsc-nicklistbtn
+                    background-image: url(/image/users.svg);
+                    background-repeat: no-repeat;
+                    background-size: contain;
+                    width: 46px;
+                    height: 46px;
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+                    background-color: #00bcd4;
+                    border-radius: 100%;
+                    border: 5px solid #389dbb;
+                    display: none;
+                    opacity: 0.5;
+                    cursor: pointer;
                 .topicbar
                     position: absolute;
                     top: 0;
@@ -185,11 +202,32 @@ body
                     top: 0;
                     bottom: 0;
                     display: none;
+                    z-index: 11;
+                    background-color: #ffffff;
+                    .nick
+                        cursor: pointer;
+                        &:hover
+                            background-color: #b1ffc2;
+                        .nickname
+                            font-size: 120%;
+                        .prefix
+                            width: 16px;
+                            height: 16px;
+                            line-height: 16px;
+                            padding: 2px;
+                            display: inline-block;
+                            background-color: #05abe0;
+                            border-radius: 4px;
+                            color: #fff;
+                            text-align: center;
+                            margin-right: 5px;
+                            font-weight: bold;
+                        .no-prefix
+                            width: 25px;
+                            display: inline-block;
                 &.vnicks
                     .nicklist
                         display: block;
-                        &.forceopen
-                            display: block !important;
                     .letterbox
                         right: 301px;
                     .topicbar
@@ -214,7 +252,7 @@ body
                     padding-right: 20px;
                     margin-right: 0;
                     width: 183px;
-                    text-overflow: clip;
+                    overflow: hidden;
                 .inputwrapper
                     display: inline-block
                     position: absolute
@@ -289,3 +327,24 @@ body
         font-weight: bold;
     &.m_action .actionee
         color: #3f51b5;
+
+@media all and (max-width: 600px)
+    .vnicks
+        .nicklist
+            display: none !important;
+        .letterbox
+            right: 0 !important;
+        .topicbar
+            right: 0 !important;
+        &.vopentrig
+            .nicklist
+                display: block !important;
+            .topicbar
+                right: 45px;
+        .smsc-nicklistbtn
+            z-index: 12;
+            display: block !important;
+    .my_nickname
+        display: none;
+    .inputwrapper
+        left: 38px !important;

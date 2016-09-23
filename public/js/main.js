@@ -137,6 +137,14 @@ function addClass(element, cl) {
 	element.className = classList.join(" ");
 }
 
+function toggleClass(element, cl) {
+	let classList = element.className.split(" ");
+	if(classList.indexOf(cl) != -1)
+		removeClass(element, cl);
+	else
+		addClass(element, cl);
+}
+
 let composer = {
 	message: {
 		simple: function(time, sender, message, type) {
@@ -154,11 +162,11 @@ let composer = {
 				case "part":
 				case "quit":
 				case "kick":
-					element.innerHTML += "<span class='arrowout'><--</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "<span class='arrowout'>&#11013;</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
 					element.innerHTML += "&nbsp;"+message+"</span>";
 					break;
 				case "join":
-					element.innerHTML += "<span class='arrowin'>--></span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "<span class='arrowin'>&#10145;</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
 					element.innerHTML += "&nbsp;"+message+"</span>";
 					break;
 				default:
@@ -604,6 +612,9 @@ class IRCChatWindow {
 		this.firstServer = true;
 		this.currentBuffer = null;
 		this.input_handler = new InputHandler();
+		clientdom.smsctrig.onclick = (e) => {
+			toggleClass(clientdom.chat, "vopentrig");
+		}
 	}
 
 	getBufferByName(buffername) {
@@ -815,8 +826,8 @@ class IRCChatWindow {
 		if(kicker)
 			buffer.addMessage("has kicked "+user+" <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
 		else
-			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left "+
-								channel+(reason != null ? "<span class='reason'>"+reason+"</span>" : ""), user.nickname, "part");
+			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left"+
+								channel+(reason != null ? "&nbsp;<span class='reason'>"+reason+"</span>" : ""), user.nickname, "part");
 		if(kicker)
 			buffer.nicklist.nickRemove(user);
 		else
@@ -858,8 +869,9 @@ window.onload = function() {
 	clientdom['send'] = clientdom.frame.querySelector('.sendbutton');
 	clientdom['chat'] = clientdom.frame.querySelector('.chatarea');
 	clientdom['topicbar'] = clientdom.chat.querySelector('.topicbar');
+	clientdom['smsctrig'] = clientdom.chat.querySelector('.smsc-nicklistbtn');
 
-	irc.socket = io.connect('http://localhost:8080');
+	irc.socket = io.connect();
 
 	irc.auther = new IRCConnector();
 	irc.chat = new IRCChatWindow();
