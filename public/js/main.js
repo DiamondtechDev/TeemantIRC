@@ -4,6 +4,7 @@ window.irc = {
 	timestamps: true,
 	timestampFormat: "HH:mm:ss",
 	serverData: {},
+	serverChatQueue: {},
 	chatType: "simple"
 };
 
@@ -125,6 +126,20 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
+function linkify(text) {
+	// see http://daringfireball.net/2010/07/improved_regex_for_matching_urls
+	let re = /\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))/gi;
+	let parsed = text.replace(re, function(url) {
+		// turn into a link
+		let href = url;
+		if (url.indexOf('http') !== 0) {
+			href = 'http://' + url;
+		}
+		return '<a href="' + href + '" target="_blank">' + url + '</a>';
+	});
+	return parsed;
+}
+
 function removeClass(element, cl) {
 	let classList = element.className.split(" ");
 	remove_str(classList, cl);
@@ -153,6 +168,8 @@ let composer = {
 
 			if(irc.timestamps)
 				element.innerHTML += "<span class='timestamp'>"+time.format(irc.timestampFormat)+"</span>&nbsp;";
+
+			message = linkify(message);
 
 			switch(type) {
 				case "action":
@@ -250,6 +267,7 @@ class Nicklist {
 	}
 
 	nickAddObject(obj) {
+		if(this.getNickIndex(obj.nickname) != null) return;
 		this.nicks.push(obj);
 	}
 
@@ -424,7 +442,7 @@ class Buffer {
 
 		if(this.topic != null && this.topic != "") {
 			addClass(clientdom.chat, 'vtopic');
-			clientdom.topicbar.innerHTML = this.topic;
+			clientdom.topicbar.innerHTML = linkify(this.topic);
 		}
 
 		this.renderMessages();
@@ -455,7 +473,7 @@ class Buffer {
 
 	topicChange(topic) {
 		if(this.active) {
-			clientdom.topicbar.innerHTML = topic;
+			clientdom.topicbar.innerHTML = linkify(topic);
 
 			if(this.topic == null)
 				addClass(clientdom.chat, "vtopic");
@@ -463,8 +481,8 @@ class Buffer {
 		this.topic = topic;
 	}
 
-	addMessage(message, sender, type) {
-		let mesg = {message: message, sender: sender, type: type, time: new Date()}
+	addMessage(message, sender, type, time) {
+		let mesg = {message: message, sender: sender, type: type, time: time || new Date()}
 		this.messages.push(mesg);
 
 		if(this.active)
@@ -689,6 +707,15 @@ class IRCChatWindow {
 		this.buffers.push(newServer);
 		this.render(newServer);
 		this.firstServer = false;
+
+		if(irc.serverChatQueue[serverinfo.address]) {
+			for(let a in irc.serverChatQueue[serverinfo.address]) {
+				let mesg = irc.serverChatQueue[serverinfo.address][a];
+				newServer.addMessage(mesg.message, mesg.from, mesg.type, mesg.time);
+			}
+			delete irc.serverChatQueue[serverinfo.address];
+		}
+
 	}
 
 	createBuffer(server, name, type, autoswitch) {
@@ -918,16 +945,24 @@ window.onload = function() {
 				else if(data['topic'])
 					irc.chat.topicChange(data.channel, data.server, data.topic, null);
 				else if(data['set_by'])
-					irc.chat.messageBuffer(data.channel, data.server, {message: "Topic set by "+data.set_by+" on "+new Date(data.time), type: "topic", from: null});
+					irc.chat.messageBuffer(data.channel, data.server, {message: "Topic set by "+data.set_by+" on "+new Date(data.time*1000), type: "topic", from: null});
 				break;
 			case "nick_change":
 				irc.chat.nickChange(data.server, data.nick, data.newNick);
 				break;
 			case "server_message":
-				irc.chat.messageBuffer(data.server, data.server, {message: data.message, type: data.messageType, from: null});
+				if(irc.chat.getBuffersByServer(data.server).length == 0) {
+					if(!irc.serverChatQueue[data.server]) {
+						irc.serverChatQueue[data.server] = [];
+					} else {
+						irc.serverChatQueue[data.server].push({type: data.messageType, message: data.message, from: data.from || null, time: new Date()});
+					}
+				} else {
+					irc.chat.messageBuffer(data.server, data.server, {message: data.message, type: data.messageType, from: data.from || null});
+				}
 				break;
 			case "connect_message":
-				irc.auther.authMessage(data.data, data.error);
+				irc.auther.authMessage(data.message, data.error);
 				break;
 		}
 	});

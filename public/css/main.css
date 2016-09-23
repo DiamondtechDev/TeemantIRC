@@ -376,7 +376,11 @@ body {
   color: #03a9f4;
   font-weight: bold;
 }
-.message.m_nick .content {
+.message.m_motd .content {
+  font-family: monospace;
+}
+.message.m_nick .content,
+.message.m_notice .content {
   color: #ff9800;
   font-weight: bold;
 }

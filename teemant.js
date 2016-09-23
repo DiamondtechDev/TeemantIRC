@@ -2,10 +2,15 @@
 'use strict';
 let express = require("express");
 let path = require("path");
-let sockio = require('socket.io');
+let sockio = require("socket.io");
+let dns = require("dns");
 let app = express();
+
 let pubdir = path.join(__dirname+"/public");
-let port = 8080;
+let config = require(__dirname+'/server/config');
+let ircclient = require(__dirname+'/server/irc');
+
+let port = config.server.port || 8080;
 
 let connections = {}
 
@@ -19,6 +24,16 @@ let io = sockio.listen(app.listen(port, function() {
 	console.log("*** Listening on port " + port);
 }));
 
+function resolveHostname(hostname) {
+	let promise = new Promise(function(resolve, reject) {
+		dns.lookup(hostname, function(err, address, family) {
+			if(err != null) return reject(err);
+			resolve(address);
+		});
+	});
+	return promise;
+}
+
 io.sockets.on('connection', function (socket) {
 	console.log('clientID: '+socket.id+' connection: ', socket.request.connection._peername);
 	connections[socket.id] = {}
@@ -28,52 +43,69 @@ io.sockets.on('connection', function (socket) {
 	})
 
 	socket.on('disconnect', function() {
-		for (let d in connections[socket.id]) d.disconnect("Client exited");
+		for (let d in connections[socket.id]) 
+			connections[socket.id][d].disconnect();
 
 		delete connections[socket.id];
 
 		console.log('clientID: '+socket.id+' disconnect');
 	});
 
+	socket.on('error', (e) => {
+		console.log(e);
+	})
+
 	socket.on('irc_create', function(connectiondata) {
 		console.log(socket.id+" created irc connection: ", connectiondata);
+		socket.emit('act_client', {type: 'connect_message', message: "Connecting to server..", error: false});
 
-		socket.emit('act_client', {type: 'connect_message', data: "Attempting connection..", error: false});
+		let newConnection = new ircclient(connectiondata);
+		newConnection.connect();
 
-		setTimeout(function() {
-			console.log("fake connect");
-			socket.emit('act_client', {type: 'event_connect', address: connectiondata.server, network: "IcyNet", supportedModes: {"o": "@", "h": "%", "v": "+"}, nickname: connectiondata.nickname, raw: connectiondata});
-			socket.emit('act_client', {type: 'server_message', messageType: "notice", server: connectiondata.server, message: "Connection established"});
-		}, 2000);
+		connections[socket.id][connectiondata.server] = newConnection;
 
-		setTimeout(function() {
-			console.log("fake channel");
-			socket.emit('act_client', {type: 'event_join_channel', server: connectiondata.server, channel: "#channel", user: {nickname: connectiondata.nickname, username: "teemant", hostname: socket.request.connection._peername.address}});
-			socket.emit('act_client', {type: 'channel_nicks', channel: "#channel", server: connectiondata.server, nicks: ["+horse", "@scoper", "@aspire", "+random", "lol"]});
-			socket.emit('act_client', {type: 'channel_topic', channel: "#channel", server: connectiondata.server, topic: "This channel is the best."});
-			socket.emit('act_client', {type: 'channel_topic', channel: "#channel", server: connectiondata.server, set_by: "horse", time: Date.now()});
-			socket.emit('act_client', {type: 'message', messageType: "privmsg", server: connectiondata.server, to: "#channel", user: {nickname: "horse"}, message: "I like ponies"});
+		newConnection.on('authenticated', () => {
+			console.log("******** AUTH DONE **********");
+			console.log("******** AUTH DONE **********");
+			console.log("******** AUTH DONE **********");
+			console.log("******** AUTH DONE **********");
+			console.log("******** AUTH DONE **********");
+			socket.emit('act_client', {type: "event_connect", address: connectiondata.server, network: newConnection.data.network,
+										  supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname});
+		});
 
-			setTimeout(function() {
-				socket.emit('act_client', {type: 'nick_change', server: connectiondata.server, nick: "horse", newNick: "pony"});
-			}, 2000)
+		newConnection.on('error', (data) => {
+			let message = "An error occured";
+			let inconnect = false;
 
-			setTimeout(function() {
-				socket.emit('act_client', {type: 'message', messageType: "action", server: connectiondata.server, to: "#channel", user: {nickname: "pony"}, message: "Is the greatest pony fan"});
-			}, 3000)
+			if(!newConnection.authenticated) {
+				message = "Failed to connect to the server!";
+				inconnect = true;
+			}
 
-			setTimeout(function() {
-				socket.emit('act_client', {type: 'event_join_channel', server: connectiondata.server, channel: "#poni", user: {nickname: connectiondata.nickname, username: "teemant", hostname: socket.request.connection._peername.address}});
-				socket.emit('act_client', {type: 'channel_nicks', channel: "#poni", server: connectiondata.server, nicks: ["+horse", "@Diamond", "@aspire", "+random", "lol"]});
-				socket.emit('act_client', {type: 'channel_topic', channel: "#poni", server: connectiondata.server, topic: "This channel is the second best."});
-				socket.emit('act_client', {type: 'channel_topic', channel: "#poni", server: connectiondata.server, set_by: "Diamond", time: Date.now()});
-			}, 5000)
+			socket.emit('act_client', {type: (inconnect ? 'server_message' : 'connect_message'), message: message, type: 'error', error: true});
+		});
 
-			setTimeout(function() {
-				socket.emit('act_client', {type: 'event_kick_channel', server: connectiondata.server, channel: "#channel", user: {nickname: "scoper", username: "teemant", hostname: socket.request.connection._peername.address}, kickee: "random", reason: "Get out."});
-				socket.emit('act_client', {type: 'event_quit', server: connectiondata.server, user: {nickname: "lol", username: "teemant", hostname: socket.request.connection._peername.address}, reason: "Sleep."});
-				socket.emit('act_client', {type: 'event_part_channel', server: connectiondata.server, channel: "#poni", user: {nickname: "aspire", username: "teemant", hostname: socket.request.connection._peername.address}, reason: "Bye, lol."});
-			}, 6000);
-		}, 4000);
+		newConnection.on('pass_to_client', (data) => {
+			socket.emit('act_client', data);
+		});
+
+		newConnection.on('closed', (data) => {
+			let message = "Connection closed";
+			let inconnect = false;
+
+			switch(data.type) {
+				case "sock_closed_success":
+					inconnect = true;
+					break;
+			}
+
+			if(!newConnection.authenticated) {
+				message = "Failed to connect to the server!";
+				inconnect = true;
+			}
+
+			socket.emit('act_client', {type: (inconnect ? 'server_message' : 'connect_message'), message: message, type: 'error', error: true});
+		});
 	});
 });

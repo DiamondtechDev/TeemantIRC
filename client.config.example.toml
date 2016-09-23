@@ -1,0 +1,9 @@
+[server]
+	port=8080
+
+[client]
+	username="teemant"
+	realname="A Teemant User"
+	default_quit_msg="Teemant IRC"
+	default_part_msg="Bye!"
+	secure_by_default=false
