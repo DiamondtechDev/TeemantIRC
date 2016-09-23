@@ -39,6 +39,16 @@ io.sockets.on('connection', function (socket) {
 		setTimeout(function() {
 			console.log("fake connect");
 			socket.emit('act_client', {type: 'event_connect', address: connectiondata.server, network: "IcyNet", raw: connectiondata});
-		}, 2000)
+			socket.emit('act_client', {type: 'server_message', messageType: "notice", server: connectiondata.server, to: connectiondata.server, from: null, message: "Connection established"});
+		}, 2000);
+
+		setTimeout(function() {
+			console.log("fake channel");
+			socket.emit('act_client', {type: 'event_join_channel', server: connectiondata.server, name: "#channel"});
+			// Spam the client with messages (for testing)
+			setInterval(function() {
+				socket.emit('act_client', {type: 'server_message', messageType: "privmsg", server: connectiondata.server, to: "#channel", from: "horse", message: "I like ponies"});
+			}, 4000);
+		}, 4000);
 	});
 });

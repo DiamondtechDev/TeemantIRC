@@ -83,3 +83,129 @@ body
                     background: -moz-linear-gradient(top, rgba(196,239,252,1) 0%, rgba(127,213,239,1) 40%, rgba(57,183,221,1) 100%);
                     background: -webkit-linear-gradient(top, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
                     background: linear-gradient(to bottom, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
+    #chat
+        .ircwrapper
+            position: absolute
+            width: 100%
+            height: 100%
+            .toolbar
+                height: 56px
+                background-color: #00c7e0
+                position: relative
+                z-index: 10
+                box-shadow: 2px 2px 4px #cecece
+                .logo
+                    width: 56px;
+                    height: 56px;
+                    display: inline-block;
+                    margin: 0 5px;
+                .tabby
+                    display: inline-block;
+                    height: 56px;
+                    position: absolute;
+                    left: 60px;
+                    right: 0;
+                    .tab
+                        display: inline-block;
+                        min-width: 60px;
+                        height: 25px;
+                        margin: 5px;
+                        margin-right: 0;
+                        padding: 10px;
+                        line-height: 25px;
+                        background-color: #29e1ff;
+                        border-radius: 5px;
+                        border: 1px solid #00d0ea;
+                        box-shadow: inset 4px 4px 8px #44ebff;
+                        color: #fff;
+                        cursor: pointer;
+                        font-weight: 600;
+                        #close
+                            display: inline-block;
+                            width: 12px;
+                            text-align: center;
+                            color: #ff3d3d;
+                            float: right;
+                        &:hover
+                            background-color: #63e9ff;
+                            box-shadow: inset 4px 4px 8px #86f2ff;
+                        &.active
+                            background-color: #00b9d8;
+                            border: 1px solid #009aad;
+                            box-shadow: inset 4px 4px 8px #009caf;
+                            color: #ffffff;
+                            &:hover
+                                background-color: #00c7e8;
+            .chatarea
+                position: absolute;
+                top: 56px;
+                width: 100%;
+                bottom: 46px;
+                .topicbar
+                    position: absolute;
+                    top: 0;
+                    height: 20px;
+                    right: 0;
+                    left: 0;
+                    background-color: #fff;
+                    border-bottom: 1px solid #ddd;
+                    padding: 12px;
+                    display: none;
+                .letterbox
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                .nicklist
+                    width: 280px;
+                    position: absolute;
+                    right: 0;
+                    border-left: 1px solid #ddd;
+                    padding: 10px;
+                    top: 0;
+                    bottom: 0;
+                    display: none;
+                &.vnicks
+                    .nicklist
+                        display: block;
+                    .letterbox
+                        right: 301px;
+                    .topicbar
+                        right: 301px;
+                &.vtopic
+                    .topicbar
+                        display: block;
+                    .letterbox
+                        top: 45px;
+            .input
+                position: absolute;
+                bottom: 0;
+                height: 46px;
+                width: 100%;
+                background-color: #00c7e0;
+                .nickname
+                    background-color: #00efef;
+                    margin: 5px;
+                    padding: 7px;
+                    border-top-left-radius: 10px;
+                    border-bottom-left-radius: 10px;
+                    padding-right: 20px;
+                    margin-right: 0;
+                    width: 183px;
+                    text-overflow: clip;
+                .inputwrapper
+                    display: inline-block;
+                    position: absolute;
+                    margin: 5px 0;
+                    left: 210px;
+                    right: 46px;
+                    top: 0;
+                    input
+                        width: 100%;
+                        padding: 6px;
+                        font-size: 120%;
+                        border: 1px solid #929292;
+                        border-left: 0;
+                        box-shadow: inset 4px 4px 8px #d8d8d8;
+                        
