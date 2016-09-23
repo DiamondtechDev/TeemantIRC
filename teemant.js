@@ -38,13 +38,10 @@ io.sockets.on('connection', function (socket) {
 	console.log('clientID: '+socket.id+' connection: ', socket.request.connection._peername);
 	connections[socket.id] = {}
 
-	socket.on('userinput', function(data) {
-		console.log(data);
-	})
-
 	socket.on('disconnect', function() {
 		for (let d in connections[socket.id]) 
-			connections[socket.id][d].disconnect();
+			if(connections[socket.id][d].connected == true)
+				connections[socket.id][d].disconnect();
 
 		delete connections[socket.id];
 
@@ -53,6 +50,14 @@ io.sockets.on('connection', function (socket) {
 
 	socket.on('error', (e) => {
 		console.log(e);
+	});
+
+	socket.on('userinput', (data) => {
+		let serv = connections[socket.id][data.server];
+		if(!serv) return;
+		if(serv.authenticated == false) return;
+
+		serv.handler.handleUserLine(data);
 	})
 
 	socket.on('irc_create', function(connectiondata) {
@@ -65,25 +70,22 @@ io.sockets.on('connection', function (socket) {
 		connections[socket.id][connectiondata.server] = newConnection;
 
 		newConnection.on('authenticated', () => {
-			console.log("******** AUTH DONE **********");
-			console.log("******** AUTH DONE **********");
-			console.log("******** AUTH DONE **********");
-			console.log("******** AUTH DONE **********");
-			console.log("******** AUTH DONE **********");
 			socket.emit('act_client', {type: "event_connect", address: connectiondata.server, network: newConnection.data.network,
 										  supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname});
 		});
 
-		newConnection.on('error', (data) => {
+		newConnection.on('connerror', (data) => {
 			let message = "An error occured";
 			let inconnect = false;
+			
+			console.log(newConnection.authenticated);
 
-			if(!newConnection.authenticated) {
+			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
 				inconnect = true;
 			}
 
-			socket.emit('act_client', {type: (inconnect ? 'server_message' : 'connect_message'), message: message, type: 'error', error: true});
+			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});
 		});
 
 		newConnection.on('pass_to_client', (data) => {
@@ -94,18 +96,12 @@ io.sockets.on('connection', function (socket) {
 			let message = "Connection closed";
 			let inconnect = false;
 
-			switch(data.type) {
-				case "sock_closed_success":
-					inconnect = true;
-					break;
-			}
-
-			if(!newConnection.authenticated) {
+			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
 				inconnect = true;
 			}
 
-			socket.emit('act_client', {type: (inconnect ? 'server_message' : 'connect_message'), message: message, type: 'error', error: true});
+			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});
 		});
 	});
 });

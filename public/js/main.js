@@ -485,6 +485,9 @@ class Buffer {
 		let mesg = {message: message, sender: sender, type: type, time: time || new Date()}
 		this.messages.push(mesg);
 
+		if(type == "regular")
+			console.log(sender);
+
 		if(this.active)
 			this.appendMessage(mesg);
 		else
@@ -616,8 +619,12 @@ class InputHandler {
 
 		if(!buf) return;
 		if(inp.trim() == "") return;
+		let listargs = inp.split(' ');
 
-		irc.socket.emit("userinput", {target: buf.name, server: buf.server, message: inp, splitup: inp.split(" ")});
+		if(listargs[0].indexOf('/') == 0)
+			return;
+
+		irc.socket.emit("userinput", {target: buf.name, targetType: buf.type, server: buf.server, message: inp, splitup: inp.split(" ")});
 		this.history.push(inp);
 		clientdom.input.value = "";
 	}
@@ -723,7 +730,7 @@ class IRCChatWindow {
 		if(buf) {
 			if(autoswitch)
 				this.render(buf);
-			return;
+			return buf;
 		}
 
 		buf = new Buffer(server, name, name, type);
@@ -731,6 +738,8 @@ class IRCChatWindow {
 
 		if(autoswitch)
 			this.render(buf);
+
+		return buf;
 	}
 
 	closeBuffer(buffer) {
@@ -934,7 +943,10 @@ window.onload = function() {
 				irc.chat.handleQuit(data.server, data.user, data.reason);
 				break;
 			case "message":
-				irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
+				if(data.to == irc.serverData[data.server].my_nick)
+					irc.chat.messageBuffer(data.user.nickname, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
+				else
+					irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
 				break;
 			case "channel_nicks":
 				irc.chat.buildNicklist(data.channel, data.server, data.nicks);
@@ -951,6 +963,7 @@ window.onload = function() {
 				irc.chat.nickChange(data.server, data.nick, data.newNick);
 				break;
 			case "server_message":
+				if(data['error']) data.messageType = "error";
 				if(irc.chat.getBuffersByServer(data.server).length == 0) {
 					if(!irc.serverChatQueue[data.server]) {
 						irc.serverChatQueue[data.server] = [];

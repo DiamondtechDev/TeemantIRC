@@ -43,6 +43,14 @@ class IRCConnectionHandler {
 		this.conn = connection;
 	}
 
+	handleUserLine(data) {
+		if(data.targetType == "channel" || data.targetType == "message") {
+			this.conn.socket.write('PRIVMSG {0} :{1}\r\n'.format(data.target, data.message));
+			this.conn.emit('pass_to_client', {type: "message", messageType: "privmsg", to: data.target, 
+											  user: {nickname: this.conn.config.nickname}, message: data.message, server: data.server});
+		}
+	}
+
 	handleServerLine(line) {
 		console.log(line);
 		if(this.conn.queue["supportsmsg"] && line.command != "005")  {
@@ -61,14 +69,16 @@ class IRCConnectionHandler {
 
 		switch(line.command) {
 			case "error":
-				this.conn.emit("error", {type: "irc_error", raw: line.raw});
+				this.conn.emit("connerror", {type: "irc_error", raw: line.raw});
 				break;
 			case "001":
-				this.conn.data.actualServer = line.user.host;
+				this.conn.data.actualServer = line.user.hostname;
 				break
 			case "005":
 				if(!this.conn.queue["supportsmsg"])
 					this.conn.queue["supportsmsg"] = true;
+
+				this.conn.authenticated = true;
 
 				let argv = line.arguments.slice(1);
 				for(let a in argv) {
@@ -219,12 +229,12 @@ class IRCConnection extends EventEmitter {
 		this.socket.setTimeout(3000);
 
 		this.socket.on('error', (data) => {
-			this.emit('error', {type: "sock_error", message: "A socket error occured.", raw: data});
+			this.emit('connerror', {type: "sock_error", message: "A socket error occured.", raw: data});
 		});
 
 		this.socket.on('lookup', (err, address, family, host) => {
 			if(err) {
-				this.emit('error', {type: "resolve_error", message: "Failed to resolve host."});
+				this.emit('connerror', {type: "resolve_error", message: "Failed to resolve host."});
 			} else {
 				this.emit('lookup', {address: address, family: address, host: host});
 				this.config.address = address;
@@ -249,9 +259,7 @@ class IRCConnection extends EventEmitter {
 		});
 
 		this.socket.on('close', (data) => {
-			if(this.queue['close'])
-				this.emit('closed', {type: "sock_closed_success", raw: data, message: "Connection closed."});
-			else
+			if(!this.queue['close'])
 				this.emit('closed', {type: "sock_closed", raw: data, message: "Connection closed."});
 
 			this.connected = false;
