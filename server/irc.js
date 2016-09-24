@@ -3,18 +3,6 @@ let net = require('net');
 let configuration = require(__dirname+"/config");
 let parse = require(__dirname+"/parser");
 
-let defaultConfig = {
-	nickname: "teemant",
-	username: configuration.client.username,
-	realname: configuration.client.realname,
-	server: "localhost",
-	port: 6667,
-	autojoin: [],
-	secure: configuration.client.secure_by_default,
-	password: "",
-	address: "0.0.0.0"
-}
-
 if (!String.prototype.format) {
 	String.prototype.format = function() {
 		var args = arguments;
@@ -22,20 +10,6 @@ if (!String.prototype.format) {
 			return typeof args[number] != undefined ? args[number] : match;
 		});
 	};
-}
-
-class ConfigPatcher {
-	constructor(provided, defaults) {
-		this.result = defaults;
-		this.patches = provided;
-	}
-
-	patch() {
-		for(let a in this.patches) {
-			this.result[a] = this.patches[a];
-		}
-		return this.result;
-	}
 }
 
 class IRCConnectionHandler {
@@ -224,9 +198,23 @@ class IRCConnectionHandler {
 class IRCConnection extends EventEmitter {
 	constructor(providedInfo) {
 		super();
-		let config_u = new ConfigPatcher(providedInfo, defaultConfig);
 
-		this.config = config_u.patch();
+		this.config = {
+			nickname: "teemant",
+			username: configuration.client.username,
+			realname: configuration.client.realname,
+			server: "localhost",
+			port: 6667,
+			autojoin: [],
+			secure: configuration.client.secure_by_default,
+			password: "",
+			address: "0.0.0.0"
+		};
+
+		for(let a in providedInfo) {
+			this.config[a] = providedInfo[a];
+		}
+
 		this.socket = null;
 		this.connected = false;
 		this.authenticated = false;
