@@ -18,11 +18,53 @@ class IRCConnectionHandler {
 	}
 
 	handleUserLine(data) {
+		console.log(data);
+		switch(data.command) {
+			case "kick":
+			case "part":
+				this.conn.write('{0} {1} :{2}'.format(data.command.toUpperCase(), data.arguments[0], data.message));
+				break;
+			case "nick":
+			case "whois":
+			case "who":
+			case "join":
+				this.conn.write('{0} {1}'.format(data.command.toUpperCase(), data.arguments[0]));
+				break;
+			case "quit":
+				this.conn.write('{0} :{1}'.format(data.command.toUpperCase(), data.message));
+				break;
+			case "privmsg":
+				this.conn.write('PRIVMSG {0} :{1}'.format(data.arguments[0], data.message));
+				this.conn.emit('pass_to_client', {type: "message", messageType: "privmsg", to: data.arguments[0], 
+											  user: {nickname: this.conn.config.nickname}, message: data.message, server: data.server});
+				break;
+			case "notice":
+				this.conn.write('NOTICE {0} :{1}'.format(data.arguments[0], data.message));
+				this.conn.emit('pass_to_client', {type: "message", messageType: "notice", to: data.arguments[0], 
+											  user: {nickname: this.conn.config.nickname}, message: data.message, server: data.server});
+				break;
+			case "list":
+				this.conn.write(data.command.toUpperCase());
+				break;
+			default:
+				this.conn.write(data.command.toUpperCase()+' '+data.message);
+		}
 		if(data.targetType == "channel" || data.targetType == "message") {
-			this.conn.socket.write('PRIVMSG {0} :{1}\r\n'.format(data.target, data.message));
+			this.conn.write('PRIVMSG {0} :{1}'.format(data.target, data.message));
 			this.conn.emit('pass_to_client', {type: "message", messageType: "privmsg", to: data.target, 
 											  user: {nickname: this.conn.config.nickname}, message: data.message, server: data.server});
 		}
+	}
+
+	whoisManage(whom, list) {
+		if(!this.conn.queue.whois)
+			this.conn.queue.whois = {};
+
+		if(!this.conn.queue.whois[whom])
+			this.conn.queue.whois[whom] = list;
+		else
+			for(let a in list)
+				this.conn.queue.whois[whom][a] = list[a];
 	}
 
 	handleServerLine(line) {
@@ -33,7 +75,7 @@ class IRCConnectionHandler {
 
 			if(this.conn.config.autojoin.length > 0)
 				for(let t in this.conn.config.autojoin)
-					this.conn.socket.write('JOIN {0}\r\n'.format(this.conn.config.autojoin[t]));
+					this.conn.write('JOIN '+this.conn.config.autojoin[t]);
 
 			this.conn.emit('authenticated', {});
 		}
@@ -41,6 +83,7 @@ class IRCConnectionHandler {
 		let serverName = this.conn.config.server;
 		let realServerName = this.conn.data.actualServer;
 
+		let list = null;
 		switch(line.command) {
 			case "error":
 				this.conn.emit("connerror", {type: "irc_error", raw: line.raw});
@@ -67,6 +110,8 @@ class IRCConnectionHandler {
 								this.conn.data.supportedModes[r[b]] = aa[b];
 						} else if(t[0] === 'NETWORK') {
 							this.conn.data.network = t[1];
+						} else if(t[0] === 'CHANNELLEN') {
+							this.conn.data.max_channel_length = parseInt(t[1]);
 						}
 
 						this.conn.data.serverSupports[t[0]] = t[1];
@@ -113,9 +158,7 @@ class IRCConnectionHandler {
 				let type = "privmsg";
 
 				if(line.trailing.indexOf('\x01ACTION') == 0) {
-					line.trailing = line.trailing.substring(8);
-					line.trailing.substring(0, line.trailing.length-1);
-					type = "action";
+					// TODO: remove once proper CTCP handling is done;
 				} else if(line.trailing.indexOf('\x01') == 0) {
 					// TODO: handle CTCPs
 					return;
@@ -135,6 +178,9 @@ class IRCConnectionHandler {
 					this.conn.emit('pass_to_client', {type: "server_message", messageType: "notice", message: line.trailing, server: serverName, from: realServerName});
 				break;
 			case "NICK":
+				if(line.user.nickname == this.conn.config.nickname)
+					this.conn.config.nickname = line.arguments[0];
+
 				this.conn.emit('pass_to_client', {type: "nick_change", nick: line.user.nickname, newNick: line.arguments[0], server: serverName});
 				break;
 			case "KICK":
@@ -155,6 +201,8 @@ class IRCConnectionHandler {
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "motd", message: line.trailing, server: serverName, from: realServerName});
 				break;
 			case "251":
+			case "290":
+			case "292":
 			case "255":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.trailing, server: serverName, from: realServerName});
 				break;
@@ -191,6 +239,91 @@ class IRCConnectionHandler {
 					this.conn.emit('pass_to_client', {type: "mode", target: line.arguments[0], message: line.arguments.slice(1).join(" "), 
 								server: serverName, user: line.user});
 				break;
+			case "433":
+				let newNick = this.conn.config.nickname + "_";
+				this.conn.write('NICK '+newNick);
+				this.conn.config.nickname = newNick;
+				break;
+			case "401":
+			case "402":
+				this.conn.emit('pass_to_client', {type: "message", to: line.arguments[1], message: line.trailing, 
+								server: serverName, user: {nickname: realServerName}, messageType: "error"});
+				break;
+			case "311":
+				// start whois queue
+				list = {
+					nickname: line.arguments[1],
+					hostmask: "{0}!{1}@{2}".format(line.arguments[1], line.arguments[2], line.arguments[3]),
+					realname: line.trailing || ""
+				};
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "319":
+				// whois: channels
+				list = {
+					channels: line.trailing.split(" "),
+				};
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "312":
+				list = {
+					server: line.arguments[2],
+					server_name: line.trailing || ""
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "313":
+				list = {
+					title: line.trailing
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "330":
+				list = {
+					loggedIn: line.trailing+' '+line.arguments[2]
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "335":
+				list = {
+					bot: true
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "307":
+				list = {
+					registered: line.trailing
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "671":
+				list = {
+					secure: true
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "317":
+				list = {
+					signonTime: line.arguments[3],
+					idleSeconds: line.arguments[2]
+				}
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "318":
+				if(!this.conn.queue.whois || !this.conn.queue.whois[line.arguments[1]])
+					return;
+				this.conn.emit('pass_to_client', {type: "whoisResponse", whois: this.conn.queue.whois[line.arguments[1]], 
+								server: serverName, from: realServerName});
+				delete this.conn.queue.whois[line.arguments[1]];
+				break;
+			case "321":
+				this.conn.emit('pass_to_client', {type: "listedchan", channel: "Channel", users: "Users", topic: "Topic",
+								server: serverName, from: realServerName});
+				break;
+			case "322":
+				this.conn.emit('pass_to_client', {type: "listedchan", channel: line.arguments[1], users: line.arguments[2], topic: line.trailing,
+								server: serverName, from: realServerName});
+				break;
 		}
 	}
 }
@@ -225,6 +358,7 @@ class IRCConnection extends EventEmitter {
 			serverSupports: {},
 			network: this.config.server,
 			actualServer: this.config.server,
+			max_channel_length: 64,
 			supportedModes: {}
 		};
 		this.queue = {};
@@ -297,7 +431,7 @@ class IRCConnection extends EventEmitter {
 
 	disconnect(message) {
 		if(!this.connected) {
-			this.emit('error', {type: "sock_closed", message: "Connection already closed."});
+			this.emit('connerror', {type: "sock_closed", message: "Connection already closed."});
 			return;
 		}
 
@@ -305,6 +439,13 @@ class IRCConnection extends EventEmitter {
 		this.socket.write('QUIT :{0}\r\n'.format(message != null ? message : configuration.client.default_quit_msg));
 	}
 
+	write(message) {
+		if(!this.connected) {
+			this.emit('connerror', {type: "sock_closed", message: "Connection is closed."});
+			return;
+		}
+		this.socket.write(message+'\r\n');
+	}
 	
 }
 

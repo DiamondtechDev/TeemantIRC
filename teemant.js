@@ -71,7 +71,8 @@ io.sockets.on('connection', function (socket) {
 
 		newConnection.on('authenticated', () => {
 			socket.emit('act_client', {type: "event_connect", address: connectiondata.server, network: newConnection.data.network,
-										  supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname});
+										supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname,
+										max_channel_length: newConnection.data.max_channel_length});
 		});
 
 		newConnection.on('connerror', (data) => {

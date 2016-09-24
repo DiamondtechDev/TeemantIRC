@@ -141,6 +141,48 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
+irc.whoisMessage = function(whoisData, buffer) {
+	let messages = [];
+	for(let key in whoisData) {
+		switch(key) {
+			case "hostmask":
+				messages.push("<span class='hostmask'>"+whoisData[key]+"</span>: "+whoisData['realname']);
+				break;
+			case "idleSeconds":
+				let msgs = "is idle for "+whoisData[key]+" seconds";
+				if(whoisData['signonTime'])
+					msgs += ", signed on at "+new Date(parseInt(whoisData['signonTime'])*1000);
+				messages.push(msgs);
+				break;
+			case "loggedIn":
+			case "registered":
+			case "title":
+				messages.push(whoisData[key]);
+				break;
+			case "channels":
+				messages.push(whoisData[key].join(" "));
+				break;
+			case "server":
+				let adfd = "is on <span class='server nick'>"+whoisData[key]+"</span>";
+				if(whoisData['server_name'])
+					adfd += "&nbsp;<span class='hostmask'>"+whoisData['server_name']+"</span>";
+				messages.push(adfd);
+				break;
+			case "secure":
+				messages.push("is using a secure connection.");
+				break;
+			case "bot":
+				messages.push("is a bot on "+irc.serverData[buffer.server].network);
+				break;
+		}
+	}
+
+	for(let i in messages) {
+		let mesg = "[<span class='nick'>"+whoisData.nickname+"</span>]&nbsp;"+messages[i];
+		buffer.addMessage(mesg, null, "whois");
+	}
+}
+
 function rand(min, max) {
     return parseInt(Math.random() * (max-min+1), 10) + min;
 }
@@ -235,17 +277,18 @@ let composer = {
 					break;
 			}
 
-			if(sender){
+			if(sender) {
 				let sndr1 = element.querySelector('.sender');
-				let sndr2 = element.querySelectorAll('.nick');
 				if(sndr1)
 					sndr1.style.color = colorizer.get_random_color(sndr1.innerHTML);
-				else if(sndr2.length > 0)
-					for(let a in sndr2)
-						if(sndr2[a] && sndr2[a]['style'])
-							sndr2[a].style.color = colorizer.get_random_color(sndr2[a].innerHTML);
 			}
 
+			let sndr2 = element.querySelectorAll('.nick');
+			if(sndr2.length > 0)
+				for(let a in sndr2)
+					if(sndr2[a] && sndr2[a]['style'])
+						sndr2[a].style.color = colorizer.get_random_color(sndr2[a].innerHTML);
+			
 			return element;
 		}
 	}
@@ -479,6 +522,12 @@ class Tab {
 		}
 	}
 
+	setTitle(title) {
+		let titleEl = this.element.querySelector('#title');
+		if(!titleEl)
+			titleEl.innerHTML = title;
+	}
+
 	close() {
 		this.closeRequested = true;
 		this.buffer.closeBuffer();
@@ -499,6 +548,7 @@ class Buffer {
 		this.title = tabname;
 		this.type = type;
 		this.active = false;
+		this.alive = true;
 
 		this.tab = new Tab(this);
 		this.tab.renderTab(clientdom.tabby);
@@ -582,6 +632,14 @@ class Buffer {
 		this.tab.setActive(false);
 		this.lastscroll = clientdom.letterbox.scrollTop;
 		this.active = false;
+	}
+
+	setAliveStatus(status) {
+		this.alive = status;
+		if(this.alive)
+			this.tab.setTitle(this.title);
+		else
+			this.tab.setTitle('<i>('+this.title+')</i>');
 	}
 
 	closeBuffer() {
@@ -700,14 +758,91 @@ class InputHandler {
 
 		if(!buf) return;
 		if(inp.trim() == "") return;
+
 		let listargs = inp.split(' ');
 
-		if(listargs[0].indexOf('/') == 0)
-			return;
+		if(listargs[0].indexOf('/') == 0) {
+			let cmd = listargs[0].substring(1).toLowerCase();
+			switch(cmd) {
+				case "join":
+					if (!listargs[1]) {
+						if(!buf.alive) {
+							irc.socket.emit("userinput", {command: "join", server: buf.server, message: "", arguments: [buf.name]});
+						} else {
+							this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
+						}
+					} else {
+						irc.socket.emit("userinput", {command: "join", server: buf.server, message: "", arguments: [listargs[1]]});
+					}
+					break;
+				case "part":
+					if (!listargs[1] && buf.type == "channel") {
+						inpcommand = "part";
+						listargs = [buf.name];
+					} else if(buf.type != "channel") {
+						this.commandError(buf, listargs[0].toUpperCase()+': Buffer is not a channel.');
+					} else if(listargs[1]) {
+						if(listargs[1].indexOf('#')) {
+							let msg = "";
+							if(listargs[2])
+								msg = listargs.slice(2).join(" ");
+							irc.socket.emit("userinput", {command: "part", server: buf.server, message: msg, arguments: [buf.name]});
+						} else {
+							if(buf.type == "channel") {
+								irc.socket.emit("userinput", {command: "part", server: buf.server, message: listargs.slice(1).join(" "), arguments: [buf.name]});
+							} else {
+								this.commandError(buf, listargs[0].toUpperCase()+': Buffer is not a channel.');
+							}
+						}
+					}
+					break;
+				case "msg":
+				case "privmsg":
+				case "say":
+					if(!listargs[1] || !listargs[2])
+						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
+					if(listargs[1] == '*')
+						listargs[1] = buf.name;
+					irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
+					break;
+				case "notice":
+					if(!listargs[1] || !listargs[2])
+						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
+					if(listargs[1] == '*')
+						listargs[1] = buf.name;
+					irc.socket.emit("userinput", {command: "notice", server: buf.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
+					break;
+				case "me":
+				case "action":
+					irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: "\x01ACTION "+inp.substring(cmd.length+2)+"\x01", arguments: [buf.name]});
+					break;
+				case "list":
+					irc.socket.emit("userinput", {command: cmd, server: buf.server, message: "", arguments: listargs});
+					break;
+				case "quote":
+				case "raw":
+					irc.socket.emit("userinput", {command: listargs[1], server: buf.server, message: listargs.slice(2).join(" "), arguments: listargs.splice(2)});
+					break;
+				case "whois":
+					if(!listargs[1])
+						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
 
-		irc.socket.emit("userinput", {target: buf.name, targetType: buf.type, server: buf.server, message: inp, splitup: inp.split(" ")});
+					irc.socket.emit("userinput", {command: "whois", server: buf.server, message: "", arguments: [listargs[1]]});
+					break;
+				default:
+					this.commandError(buf, listargs[0].toUpperCase()+': Unknown command!');
+			}
+		} else {
+			irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: inp, arguments: [buf.name]});
+		}
+
 		this.history.push(inp);
 		clientdom.input.value = "";
+	}
+
+	commandError(buffer, message) {
+		buffer.addMessage(message, null, "error");
+		return true;
 	}
 }
 
@@ -798,7 +933,8 @@ class IRCChatWindow {
 			modeTranslation: serverinfo.supportedModes,
 			supportedPrefixes: prefixes,
 			network: serverinfo.network,
-			my_nick: serverinfo.nickname
+			my_nick: serverinfo.nickname,
+			max_channel_length: serverinfo.max_channel_length
 		}
 
 		let newServer = new Buffer(serverinfo.address, serverinfo.address, serverinfo.network, "server");
@@ -835,7 +971,9 @@ class IRCChatWindow {
 
 	closeBuffer(buffer) {
 		if(buffer.type == "server") return; // Don't close server buffers, lol
-		if(buffer.type == "channel") console.log("TODO: PART");
+		if(buffer.type == "channel" && buffer.alive)
+			irc.socket.emit("userinput", {command: "part", server: buffer.server, message: "Tab closed", arguments: [buffer.name]});
+		
 		let bufIndex = this.buffers.indexOf(buffer);
 
 		if(buffer.active) {
@@ -858,6 +996,11 @@ class IRCChatWindow {
 
 		if(buf == null)
 			buf = this.createBuffer(server, name, "message", false);
+
+		if(message.type == "privmsg" && message.message.indexOf('\x01ACTION') == 0) {
+			message.message = message.message.substring(8);
+			message.type = "action";
+		} 
 
 		buf.addMessage(message.message, message.from, message.type);
 	}
@@ -942,6 +1085,9 @@ class IRCChatWindow {
 
 		if(!buffer) return;
 
+		if(user.nickname == irc.serverData[server].my_nick)
+			buffer.setAliveStatus(true);
+
 		buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has joined "+channel, user.nickname, "join");
 		buffer.nicklist.nickAdd(user.nickname);
 	}
@@ -950,6 +1096,14 @@ class IRCChatWindow {
 		let buffer = this.getBufferByServerName(server, channel);
 
 		if(!buffer) return;
+
+		if(user['nickname']) {
+			if(user.nickname == irc.serverData[server].my_nick)
+				buffer.setAliveStatus(false);
+		} else {
+			if(user == irc.serverData[server].my_nick)
+				buffer.setAliveStatus(false);
+		}
 
 		if(kicker)
 			buffer.addMessage("has kicked <span class='nick'>"+user+"</span> <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
@@ -984,6 +1138,32 @@ class IRCChatWindow {
 			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>"+data.message+"</span>", 
 							data.user.nickname, "mode");
 		}
+	}
+
+	joinChannels(server, channel) {
+		if (channel.indexOf(",") !== -1) {
+			channel = channel.trim().split(",");
+
+			for (let t in channel) {
+				let chan = channel[t];
+				
+				channel[t] = chan.trim();
+
+				if (chan.indexOf("#") != 0) {
+					channel[t] = "#"+chan;
+				}
+			}
+		} else if(channel != "") {
+			channel = channel.trim();
+			if (channel.indexOf("#") != 0) {
+				channel = "#"+channel;
+			}
+			channel = [channel];
+		} else {
+			channel = [];
+		}
+
+		irc.socket.emit("userinput", {command: "join", server: server, message: "", arguments: channel});
 	}
 
 	render(buffer) {
@@ -1097,6 +1277,14 @@ window.onload = function() {
 				break;
 			case "connect_message":
 				irc.auther.authMessage(data.message, data.error);
+				break;
+			case "whoisResponse":
+				irc.whoisMessage(data.whois, irc.chat.getActiveBuffer());
+				break;
+			case "listedchan":
+				irc.chat.messageBuffer(data.server, data.server, {message: "<span class='channel'>"+data.channel+"</span>"+
+						"&nbsp<span class='usercount'>"+data.users+"</span>&nbsp;<span class='topic'>"+data.topic+"</span>", 
+						type: "listentry", from: data.from});
 				break;
 		}
 	});

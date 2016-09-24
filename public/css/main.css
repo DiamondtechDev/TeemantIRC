@@ -204,6 +204,11 @@ body {
   display: none;
   overflow: hidden;
 }
+.ircclient #chat .ircwrapper .chatarea .topicbar:hover {
+  height: auto;
+  overflow: visible;
+  word-wrap: break-word;
+}
 .ircclient #chat .ircwrapper .chatarea .letterbox {
   position: absolute;
   top: 0;
