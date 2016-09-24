@@ -5,10 +5,25 @@ window.irc = {
 	timestampFormat: "HH:mm:ss",
 	serverData: {},
 	serverChatQueue: {},
-	chatType: "simple"
+	chatType: "simple",
 };
 
 window.clientdom = {connector: {}};
+
+window.colorizer = {
+	theme: {
+		H: [1, 360],
+		S: [30, 100],
+		L: [30, 70]
+	},
+	get_random_color: function(nickname) {
+		Math.seedrandom(nickname);
+		let h = rand(colorizer.theme.H[0], colorizer.theme.H[1]); // color hue between 1 and 360
+		let s = rand(colorizer.theme.S[0], colorizer.theme.S[1]); // saturation 30-100%
+		let l = rand(colorizer.theme.L[0], colorizer.theme.L[1]); // lightness 30-70%
+		return 'hsl(' + h + ',' + s + '%,' + l + '%)';
+	}
+}
 
 /*********************\
 |**                 **|
@@ -126,6 +141,19 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
+function rand(min, max) {
+    return parseInt(Math.random() * (max-min+1), 10) + min;
+}
+
+if (!String.prototype.format) {
+	String.prototype.format = function() {
+		var args = arguments;
+		return this.replace(/{(\d+)}/g, function(match, number) { 
+			return typeof args[number] != undefined ? args[number] : match;
+		});
+	};
+}
+
 function linkify(text) {
 	// see http://daringfireball.net/2010/07/improved_regex_for_matching_urls
 	let re = /\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))/gi;
@@ -160,6 +188,15 @@ function toggleClass(element, cl) {
 		addClass(element, cl);
 }
 
+function objectGetKey(obj, value) {
+	let key = null;
+	for(let f in obj) {
+		if(obj[f] == value)
+			key = f;
+	}
+	return key;
+}
+
 let composer = {
 	message: {
 		simple: function(time, sender, message, type) {
@@ -169,21 +206,23 @@ let composer = {
 			if(irc.timestamps)
 				element.innerHTML += "<span class='timestamp'>"+time.format(irc.timestampFormat)+"</span>&nbsp;";
 
+			message = colorizer.stylize(message);
 			message = linkify(message);
 
 			switch(type) {
+				case "mode":
 				case "action":
-					element.innerHTML += "<span class='asterisk'>*</span>&nbsp;<span class='actionee'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='asterisk'>*</span>&nbsp;<span class='actionee nick'>"+sender+"</span>&nbsp;";
 					element.innerHTML += "<span class='content'>"+message+"</span>";
 					break;
 				case "part":
 				case "quit":
 				case "kick":
-					element.innerHTML += "<span class='arrowout'>&#11013;</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "<span class='arrowout'>&#11013;</span>&nbsp;<span class='content'><span class='actionee nick'>"+sender+"</span>";
 					element.innerHTML += "&nbsp;"+message+"</span>";
 					break;
 				case "join":
-					element.innerHTML += "<span class='arrowin'>&#10145;</span>&nbsp;<span class='content'><span class='actionee'>"+sender+"</span>";
+					element.innerHTML += "<span class='arrowin'>&#10145;</span>&nbsp;<span class='content'><span class='actionee nick'>"+sender+"</span>";
 					element.innerHTML += "&nbsp;"+message+"</span>";
 					break;
 				default:
@@ -195,6 +234,18 @@ let composer = {
 					}
 					break;
 			}
+
+			if(sender){
+				let sndr1 = element.querySelector('.sender');
+				let sndr2 = element.querySelectorAll('.nick');
+				if(sndr1)
+					sndr1.style.color = colorizer.get_random_color(sndr1.innerHTML);
+				else if(sndr2.length > 0)
+					for(let a in sndr2)
+						if(sndr2[a] && sndr2[a]['style'])
+							sndr2[a].style.color = colorizer.get_random_color(sndr2[a].innerHTML);
+			}
+
 			return element;
 		}
 	}
@@ -313,10 +364,24 @@ class Nicklist {
 		else
 			return;
 
-		for(let mode in irc.modeTranslation) {
-			let prefix = irc.modeTranslation[m];
-			if(newMode == mode)
-				this.nicks[nickIndex].prefix = prefix;
+		let modeTranslations = irc.serverData[this.buffer.server].modeTranslation;
+		let prefixes = irc.serverData[this.buffer.server].supportedPrefixes;
+
+		nick.modes.push(newMode);
+
+		for(let mode in modeTranslations) {
+			let prefix = modeTranslations[mode];
+			if(nick.modes.indexOf(mode) == -1) continue;
+			let a = nick.modes.indexOf(mode) - 1;
+			if(a >= 0) {
+				if(prefixes.indexOf(modeTranslations[nick.modes[a]]) < prefixes.indexOf(prefix)) {
+					nick.prefix = modeTranslations[nick.modes[a]];
+					break;
+				}
+			} else {
+				nick.prefix = prefix;
+				break;
+			}
 		}
 
 		this.render();
@@ -331,11 +396,28 @@ class Nicklist {
 		else
 			return;
 
-		for(let mode in irc.modeTranslation) {
-			let prefix = irc.modeTranslation[m];
-			if(newMode == mode)
-				this.nicks[nickIndex].prefix = "";
+		let modeTranslations = irc.serverData[this.buffer.server].modeTranslation;
+		let prefixes = irc.serverData[this.buffer.server].supportedPrefixes;
+
+		remove_str(nick.modes, oldMode);
+
+		let currentLowest = "";
+
+		for(let n in nick.modes) {
+			let mode = nick.modes[n];
+			let nextMode = nick.modes[n+1];
+			if(!nextMode && mode) {
+				currentLowest = modeTranslations[mode];
+				break;
+			} else if(nextMode) {
+				if(prefixes.indexOf(modeTranslations[nextMode]) > prefixes.indexOf(modeTranslations[mode]))
+					currentLowest = modeTranslations[nextMode];
+			} else {
+				break;
+			}
 		}
+
+		nick.prefix = currentLowest;
 
 		this.render();
 	}
@@ -442,7 +524,7 @@ class Buffer {
 
 		if(this.topic != null && this.topic != "") {
 			addClass(clientdom.chat, 'vtopic');
-			clientdom.topicbar.innerHTML = linkify(this.topic);
+			clientdom.topicbar.innerHTML = linkify(colorizer.stylize(this.topic));
 		}
 
 		this.renderMessages();
@@ -473,7 +555,7 @@ class Buffer {
 
 	topicChange(topic) {
 		if(this.active) {
-			clientdom.topicbar.innerHTML = linkify(topic);
+			clientdom.topicbar.innerHTML = linkify(colorizer.stylize(topic));
 
 			if(this.topic == null)
 				addClass(clientdom.chat, "vtopic");
@@ -519,10 +601,7 @@ class IRCConnector {
 
 			this.formLocked = true;
 
-			let success = this.validateForm(e);
-
-			if(!success)
-				this.formLocked = false;
+			this.validateForm(e);
 		}
 	}
 
@@ -589,6 +668,8 @@ class IRCConnector {
 
 	authMessage(message, error) {
 		clientdom.connector.messenger.innerHTML = "<span class='msg"+(error?" error":"")+"'>"+message+"</span>";
+		if(error)
+			this.formLocked = false;
 	}
 
 	authComplete() {
@@ -658,6 +739,16 @@ class IRCChatWindow {
 			let buf = this.buffers[t];
 			if(buf.active == true)
 				result = buf
+		}
+		return result;
+	}
+
+	getServerBuffer(server) {
+		let result = null;
+		for (let t in this.buffers) {
+			let buf = this.buffers[t];
+			if(buf.server == server)
+				result = buf;
 		}
 		return result;
 	}
@@ -778,11 +869,12 @@ class IRCChatWindow {
 			return;
 
 		for(let n in nicks) {
-			let nick = {nickname: "", prefix: ""};
+			let nick = {nickname: "", prefix: "", modes: []};
 
 			if(irc.serverData[buf.server].supportedPrefixes.split('').indexOf(nicks[n].substring(0, 1)) != -1) {
 				nick.prefix = nicks[n].substring(0, 1);
 				nick.nickname = nicks[n].substring(1);
+				nick.modes = [objectGetKey(irc.serverData[buf.server].modeTranslation, nick.prefix)];
 			} else {
 				nick.nickname = nicks[n];
 			}
@@ -860,14 +952,38 @@ class IRCChatWindow {
 		if(!buffer) return;
 
 		if(kicker)
-			buffer.addMessage("has kicked "+user+" <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
+			buffer.addMessage("has kicked <span class='nick'>"+user+"</span> <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
 		else
-			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left"+
+			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left "+
 								channel+(reason != null ? "&nbsp;<span class='reason'>"+reason+"</span>" : ""), user.nickname, "part");
 		if(kicker)
 			buffer.nicklist.nickRemove(user);
 		else
 			buffer.nicklist.nickRemove(user.nickname);
+	}
+
+	handleMode(data) {
+		let buf = null;
+		console.log(data);
+		if(data.target == irc.serverData[data.server].my_nick)
+			buf = this.getServerBuffer(data.server);
+		else
+			buf = this.getBufferByServerName(data.server, data.target);
+
+		if(!buf) return;
+
+		if(data.type == "mode_add") {
+			buf.nicklist.modeAdded(data.modeTarget, data.mode);
+			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>+"+data.mode+" "+
+							data.modeTarget+"</span>", data.user.nickname, "mode");
+		} else if(data.type == "mode_del") {
+			buf.nicklist.modeRemoved(data.modeTarget, data.mode);
+			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>-"+data.mode+" "+
+							data.modeTarget+"</span>", data.user.nickname, "mode");
+		} else {
+			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>"+data.message+"</span>", 
+							data.user.nickname, "mode");
+		}
 	}
 
 	render(buffer) {
@@ -962,9 +1078,14 @@ window.onload = function() {
 			case "nick_change":
 				irc.chat.nickChange(data.server, data.nick, data.newNick);
 				break;
+			case "mode_add":
+			case "mode_del":
+			case "mode":
+				irc.chat.handleMode(data);
+				break;
 			case "server_message":
 				if(data['error']) data.messageType = "error";
-				if(irc.chat.getBuffersByServer(data.server).length == 0) {
+				if(irc.chat.getServerBuffer(data.server) == null) {
 					if(!irc.serverChatQueue[data.server]) {
 						irc.serverChatQueue[data.server] = [];
 					} else {

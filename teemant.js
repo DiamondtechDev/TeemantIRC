@@ -76,13 +76,11 @@ io.sockets.on('connection', function (socket) {
 
 		newConnection.on('connerror', (data) => {
 			let message = "An error occured";
-			let inconnect = false;
-			
-			console.log(newConnection.authenticated);
-
+			let inconnect = true;
+		
 			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
-				inconnect = true;
+				inconnect = false;
 			}
 
 			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});
@@ -94,11 +92,11 @@ io.sockets.on('connection', function (socket) {
 
 		newConnection.on('closed', (data) => {
 			let message = "Connection closed";
-			let inconnect = false;
+			let inconnect = true;
 
 			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
-				inconnect = true;
+				inconnect = false;
 			}
 
 			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});

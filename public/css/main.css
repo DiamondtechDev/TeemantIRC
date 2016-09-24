@@ -387,6 +387,174 @@ body {
 .message.m_action .actionee {
   color: #3f51b5;
 }
+.message .irc-bg00,
+.topicbar .irc-bg00,
+.message .irc-bg0,
+.topicbar .irc-bg0 {
+  background-color: #fff;
+}
+.message .irc-bg01,
+.topicbar .irc-bg01,
+.message .irc-bg1,
+.topicbar .irc-bg1 {
+  background-color: #000;
+}
+.message .irc-bg02,
+.topicbar .irc-bg02,
+.message .irc-bg2,
+.topicbar .irc-bg2 {
+  background-color: #000080;
+}
+.message .irc-bg03,
+.topicbar .irc-bg03,
+.message .irc-bg3,
+.topicbar .irc-bg3 {
+  background-color: #008000;
+}
+.message .irc-bg04,
+.topicbar .irc-bg04,
+.message .irc-bg4,
+.topicbar .irc-bg4 {
+  background-color: #f00;
+}
+.message .irc-bg05,
+.topicbar .irc-bg05,
+.message .irc-bg5,
+.topicbar .irc-bg5 {
+  background-color: #a52a2a;
+}
+.message .irc-bg06,
+.topicbar .irc-bg06,
+.message .irc-bg6,
+.topicbar .irc-bg6 {
+  background-color: #800080;
+}
+.message .irc-bg07,
+.topicbar .irc-bg07,
+.message .irc-bg7,
+.topicbar .irc-bg7 {
+  background-color: #ffa500;
+}
+.message .irc-bg08,
+.topicbar .irc-bg08,
+.message .irc-bg8,
+.topicbar .irc-bg8 {
+  background-color: #ff0;
+}
+.message .irc-bg09,
+.topicbar .irc-bg09,
+.message .irc-bg9,
+.topicbar .irc-bg9 {
+  background-color: #0f0;
+}
+.message .irc-bg10,
+.topicbar .irc-bg10 {
+  background-color: #008080;
+}
+.message .irc-bg11,
+.topicbar .irc-bg11 {
+  background-color: #0ff;
+}
+.message .irc-bg12,
+.topicbar .irc-bg12 {
+  background-color: #00f;
+}
+.message .irc-bg13,
+.topicbar .irc-bg13 {
+  background-color: #ffc0cb;
+}
+.message .irc-bg14,
+.topicbar .irc-bg14 {
+  background-color: #808080;
+}
+.message .irc-bg15,
+.topicbar .irc-bg15 {
+  background-color: #d3d3d3;
+}
+.message .irc-fg00,
+.topicbar .irc-fg00,
+.message .irc-fg0,
+.topicbar .irc-fg0 {
+  color: #fff;
+}
+.message .irc-fg01,
+.topicbar .irc-fg01,
+.message .irc-fg1,
+.topicbar .irc-fg1 {
+  color: #000;
+}
+.message .irc-fg02,
+.topicbar .irc-fg02,
+.message .irc-fg2,
+.topicbar .irc-fg2 {
+  color: #000080;
+}
+.message .irc-fg03,
+.topicbar .irc-fg03,
+.message .irc-fg3,
+.topicbar .irc-fg3 {
+  color: #008000;
+}
+.message .irc-fg04,
+.topicbar .irc-fg04,
+.message .irc-fg4,
+.topicbar .irc-fg4 {
+  color: #f00;
+}
+.message .irc-fg05,
+.topicbar .irc-fg05,
+.message .irc-fg5,
+.topicbar .irc-fg5 {
+  color: #a52a2a;
+}
+.message .irc-fg06,
+.topicbar .irc-fg06,
+.message .irc-fg6,
+.topicbar .irc-fg6 {
+  color: #800080;
+}
+.message .irc-fg07,
+.topicbar .irc-fg07,
+.message .irc-fg7,
+.topicbar .irc-fg7 {
+  color: #ffa500;
+}
+.message .irc-fg08,
+.topicbar .irc-fg08,
+.message .irc-fg8,
+.topicbar .irc-fg8 {
+  color: #dcdc00;
+}
+.message .irc-fg09,
+.topicbar .irc-fg09,
+.message .irc-fg9,
+.topicbar .irc-fg9 {
+  color: #00e600;
+}
+.message .irc-fg10,
+.topicbar .irc-fg10 {
+  color: #008080;
+}
+.message .irc-fg11,
+.topicbar .irc-fg11 {
+  color: #00d2d2;
+}
+.message .irc-fg12,
+.topicbar .irc-fg12 {
+  color: #00f;
+}
+.message .irc-fg13,
+.topicbar .irc-fg13 {
+  color: #ffc0cb;
+}
+.message .irc-fg14,
+.topicbar .irc-fg14 {
+  color: #808080;
+}
+.message .irc-fg15,
+.topicbar .irc-fg15 {
+  color: #d3d3d3;
+}
 @media all and (max-width: 600px) {
   .vnicks .nicklist {
     display: none !important;

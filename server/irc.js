@@ -142,6 +142,9 @@ class IRCConnectionHandler {
 					line.trailing = line.trailing.substring(8);
 					line.trailing.substring(0, line.trailing.length-1);
 					type = "action";
+				} else if(line.trailing.indexOf('\x01') == 0) {
+					// TODO: handle CTCPs
+					return;
 				}
 
 				if(line.user.nickname != "")
@@ -185,6 +188,34 @@ class IRCConnectionHandler {
 			case "254":
 			case "042":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.arguments[1] +" "+ line.trailing, server: serverName, from: realServerName});
+				break;
+			case "MODE":
+				let isChannelMode = false;
+				let method = '+';
+				if(line.arguments[0].indexOf('#') != -1)
+					isChannelMode = true;
+
+				let modes = line.arguments[1];
+				method = modes.substring(0, 1);
+				modes = modes.substring(1).split('');
+				let pass = [];
+
+				if(isChannelMode) {
+					for(let i in modes) {
+						let mode = modes[i];
+						if(this.conn.data.supportedModes[mode])
+							this.conn.emit('pass_to_client', {type: "mode_"+(method=='+'?'add':'del'), target: line.arguments[0], mode: mode, 
+										modeTarget: line.arguments[2+parseInt(i)], server: serverName, user: line.user});
+						else
+							pass.push(mode);
+					}
+				} else {
+					pass = modes;
+				}
+
+				if(pass.length > 0)
+					this.conn.emit('pass_to_client', {type: "mode", target: line.arguments[0], message: line.arguments.slice(1).join(" "), 
+								server: serverName, user: line.user});
 				break;
 		}
 	}
