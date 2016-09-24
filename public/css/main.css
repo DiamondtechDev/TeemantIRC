@@ -203,10 +203,12 @@ body {
   padding: 12px;
   display: none;
   overflow: hidden;
+  z-index: 10;
 }
 .ircclient #chat .ircwrapper .chatarea .topicbar:hover {
   height: auto;
-  overflow: visible;
+  max-height: 100px;
+  overflow: auto;
   word-wrap: break-word;
 }
 .ircclient #chat .ircwrapper .chatarea .letterbox {
@@ -230,6 +232,7 @@ body {
   display: none;
   z-index: 11;
   background-color: #fff;
+  overflow: auto;
 }
 .ircclient #chat .ircwrapper .chatarea .nicklist .nick {
   cursor: pointer;
@@ -318,6 +321,9 @@ body {
   right: 5px;
   cursor: pointer;
 }
+.message.type_simple.mentioned {
+  background-color: #d4ffd4;
+}
 .message.type_simple .timestamp {
   color: #696969;
 }
@@ -341,6 +347,19 @@ body {
 .message.type_simple .arrowin,
 .message.type_simple .arrowout {
   font-weight: bolder;
+}
+.message.type_simple .channel {
+  font-weight: bold;
+  color: #a0a0a0;
+}
+.message.type_simple .m_listentry .channel {
+  min-width: 120px;
+  display: inline-block;
+}
+.message.type_simple .m_listentry .usercount {
+  display: inline-block;
+  min-width: 45px;
+  text-align: center;
 }
 .message .reason:before,
 .message .hostmask:before {
@@ -391,6 +410,16 @@ body {
 }
 .message.m_action .actionee {
   color: #3f51b5;
+}
+.message.m_mode .content {
+  font-style: italic;
+}
+.message.m_mode .mode {
+  color: #008000;
+}
+.message.m_error .content {
+  color: #f00;
+  font-weight: bold;
 }
 .message .irc-bg00,
 .topicbar .irc-bg00,

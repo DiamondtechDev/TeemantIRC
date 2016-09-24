@@ -184,9 +184,11 @@ body
                     padding: 12px;
                     display: none;
                     overflow: hidden;
+                    z-index: 10
                     &:hover
                         height: auto
-                        overflow: visible
+                        max-height: 100px
+                        overflow: auto
                         word-wrap: break-word
                 .letterbox
                     position: absolute;
@@ -208,6 +210,7 @@ body
                     display: none;
                     z-index: 11;
                     background-color: #ffffff;
+                    overflow: auto;
                     .nick
                         cursor: pointer;
                         &:hover
@@ -286,6 +289,8 @@ body
 
 .message
     &.type_simple
+        &.mentioned
+            background-color: #d4ffd4;
         .timestamp
             color: #696969;
             &:before
@@ -302,6 +307,17 @@ body
                 content: ">";
         .arrowin, .arrowout
             font-weight: bolder;
+        .channel
+            font-weight: bold;
+            color: #a0a0a0;
+        .m_listentry 
+            .channel
+                min-width: 120px;
+                display: inline-block;
+            .usercount
+                display: inline-block;
+                min-width: 45px;
+                text-align: center;
 
     .reason, .hostmask
         &:before
@@ -333,6 +349,14 @@ body
         font-weight: bold;
     &.m_action .actionee
         color: #3f51b5;
+    &.m_mode 
+        .content
+            font-style: italic;
+        .mode
+            color: #008000;
+    &.m_error .content
+        color: red;
+        font-weight: bold;
 
 .message, .topicbar
     .irc-bg00,.irc-bg0 

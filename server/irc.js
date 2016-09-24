@@ -82,6 +82,8 @@ class IRCConnectionHandler {
 
 		let serverName = this.conn.config.server;
 		let realServerName = this.conn.data.actualServer;
+		if(line.user.nickname == '')
+			realServerName = line.user.hostname;
 
 		let list = null;
 		switch(line.command) {
@@ -200,6 +202,7 @@ class IRCConnectionHandler {
 			case "376":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "motd", message: line.trailing, server: serverName, from: realServerName});
 				break;
+			case "351":
 			case "251":
 			case "290":
 			case "292":
@@ -246,7 +249,9 @@ class IRCConnectionHandler {
 				break;
 			case "401":
 			case "402":
-				this.conn.emit('pass_to_client', {type: "message", to: line.arguments[1], message: line.trailing, 
+			case "421":
+			case "432":
+				this.conn.emit('pass_to_client', {type: "message", to: null, message: line.arguments[1]+': '+line.trailing, 
 								server: serverName, user: {nickname: realServerName}, messageType: "error"});
 				break;
 			case "311":

@@ -480,7 +480,7 @@ class Tab {
 		let ttt = document.createElement('div');
 		ttt.innerHTML = internals;
 		ttt.className = "tab";
-		ttt.setAttribute('id', 'tab-'+this.name);
+		ttt.setAttribute('id', 'tab-'+this.buffer.name);
 		clientdom.tabby.appendChild(ttt);
 		this.element = ttt;
 
@@ -541,6 +541,7 @@ class Buffer {
 		this.topic = null;
 		this.input = "";
 		this.lastscroll = 0;
+		this.wasAtBottom = false;
 		this.unreadCount = 0;
 
 		this.server = servername;
@@ -578,7 +579,10 @@ class Buffer {
 		}
 
 		this.renderMessages();
-		clientdom.letterbox.scrollTop = this.lastscroll;
+		if(this.wasAtBottom)
+			clientdom.letterbox.scrollTop = clientdom.letterbox.scrollHeight;
+		else
+			clientdom.letterbox.scrollTop = this.lastscroll;
 
 		clientdom.currentNickname.innerHTML = irc.serverData[this.server].my_nick;
 	}
@@ -596,6 +600,10 @@ class Buffer {
 
 	appendMessage(meta) {
 		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type);
+
+		if((meta.type == "privmsg" || meta.type == "notice") && meta.message.indexOf(irc.serverData[this.server].my_nick) != -1)
+			addClass(mesgConstr, "mentioned");
+
 		clientdom.letterbox.appendChild(mesgConstr);
 
 		let lFactor = clientdom.letterbox.offsetHeight + clientdom.letterbox.scrollTop
@@ -617,18 +625,24 @@ class Buffer {
 		let mesg = {message: message, sender: sender, type: type, time: time || new Date()}
 		this.messages.push(mesg);
 
-		if(type == "regular")
-			console.log(sender);
-
-		if(this.active)
+		if(this.active) {
 			this.appendMessage(mesg);
-		else
+		} else {
 			this.unreadCount += 1;
+			if((type == "privmsg" || type == "notice") && message.indexOf(irc.serverData[this.server].my_nick) != -1)
+				console.log("TODO: notify user of mentioned");
+		}
 
 		this.tab.setUnreadCount(this.unreadCount);
 	}
 
 	switchOff() {
+		let lFactor = clientdom.letterbox.offsetHeight + clientdom.letterbox.scrollTop
+		if(lFactor > clientdom.letterbox.scrollHeight - 100)
+			this.wasAtBottom = true;
+		else
+			this.wasAtBottom = false;
+
 		this.tab.setActive(false);
 		this.lastscroll = clientdom.letterbox.scrollTop;
 		this.active = false;
@@ -815,8 +829,9 @@ class InputHandler {
 				case "action":
 					irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: "\x01ACTION "+inp.substring(cmd.length+2)+"\x01", arguments: [buf.name]});
 					break;
+				case "nick":
 				case "list":
-					irc.socket.emit("userinput", {command: cmd, server: buf.server, message: "", arguments: listargs});
+					irc.socket.emit("userinput", {command: cmd, server: buf.server, message: "", arguments: listargs.splice(1)});
 					break;
 				case "quote":
 				case "raw":
@@ -976,7 +991,6 @@ class IRCChatWindow {
 		let bufIndex = this.buffers.indexOf(buffer);
 
 		if(buffer.active) {
-			console.log(bufIndex);
 			if (bufIndex == 0) {
 				if(this.buffers[bufIndex+1]) {
 					this.render(this.buffers[bufIndex+1]);
@@ -1037,7 +1051,7 @@ class IRCChatWindow {
 			let activeBuf = this.getActiveBuffer();
 
 			if(activeBuf.server == server) {
-				activeBuf.my_nickname.innerHTML = newNick;
+				clientdom.currentNickname.innerHTML = newNick;
 			}
 		}
 
@@ -1117,7 +1131,6 @@ class IRCChatWindow {
 
 	handleMode(data) {
 		let buf = null;
-		console.log(data);
 		if(data.target == irc.serverData[data.server].my_nick)
 			buf = this.getServerBuffer(data.server);
 		else
@@ -1238,10 +1251,18 @@ window.onload = function() {
 				irc.chat.handleQuit(data.server, data.user, data.reason);
 				break;
 			case "message":
-				if(data.to == irc.serverData[data.server].my_nick)
+				if(data.to == irc.serverData[data.server].my_nick) {
 					irc.chat.messageBuffer(data.user.nickname, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
-				else
+				} else if(data.to == null) {
+					let atest = irc.chat.getActiveBuffer();
+
+					if(atest.server != data.server)
+						atest = irc.chat.getServerBuffer(data.server);
+
+					atest.addMessage(data.message, data.user.nickname, data.messageType);
+				} else {
 					irc.chat.messageBuffer(data.to, data.server, {message: data.message, type: data.messageType, from: data.user.nickname});
+				}
 				break;
 			case "channel_nicks":
 				irc.chat.buildNicklist(data.channel, data.server, data.nicks);
