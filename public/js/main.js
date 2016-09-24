@@ -524,7 +524,7 @@ class Tab {
 
 	setTitle(title) {
 		let titleEl = this.element.querySelector('#title');
-		if(!titleEl)
+		if(titleEl)
 			titleEl.innerHTML = title;
 	}
 
@@ -777,8 +777,7 @@ class InputHandler {
 					break;
 				case "part":
 					if (!listargs[1] && buf.type == "channel") {
-						inpcommand = "part";
-						listargs = [buf.name];
+						irc.socket.emit("userinput", {command: "part", server: buf.server, message: "", arguments: [buf.name]});
 					} else if(buf.type != "channel") {
 						this.commandError(buf, listargs[0].toUpperCase()+': Buffer is not a channel.');
 					} else if(listargs[1]) {
@@ -786,7 +785,7 @@ class InputHandler {
 							let msg = "";
 							if(listargs[2])
 								msg = listargs.slice(2).join(" ");
-							irc.socket.emit("userinput", {command: "part", server: buf.server, message: msg, arguments: [buf.name]});
+							irc.socket.emit("userinput", {command: "part", server: buf.server, message: msg, arguments: [listargs[1]]});
 						} else {
 							if(buf.type == "channel") {
 								irc.socket.emit("userinput", {command: "part", server: buf.server, message: listargs.slice(1).join(" "), arguments: [buf.name]});
