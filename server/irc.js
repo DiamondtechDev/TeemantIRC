@@ -2,6 +2,7 @@ let EventEmitter = require('events').EventEmitter;
 let net = require('net');
 let configuration = require(__dirname+"/config");
 let parse = require(__dirname+"/parser");
+let webirc = require(__dirname+"/webirc");
 
 if (!String.prototype.format) {
 	String.prototype.format = function() {
@@ -18,7 +19,6 @@ class IRCConnectionHandler {
 	}
 
 	handleUserLine(data) {
-		console.log(data);
 		switch(data.command) {
 			case "kick":
 			case "part":
@@ -68,7 +68,6 @@ class IRCConnectionHandler {
 	}
 
 	handleServerLine(line) {
-		console.log(line);
 		if(this.conn.queue["supportsmsg"] && line.command != "005")  {
 
 			delete this.conn.queue["supportsmsg"];
@@ -334,7 +333,7 @@ class IRCConnectionHandler {
 }
 
 class IRCConnection extends EventEmitter {
-	constructor(providedInfo) {
+	constructor(providedInfo, userInfo) {
 		super();
 
 		this.config = {
@@ -348,6 +347,8 @@ class IRCConnection extends EventEmitter {
 			password: "",
 			address: "0.0.0.0"
 		};
+
+		this.userInfo = userInfo;
 
 		for(let a in providedInfo) {
 			this.config[a] = providedInfo[a];
@@ -429,7 +430,11 @@ class IRCConnection extends EventEmitter {
 		if (this.config.password)
 			this.socket.write('PASS {0}\r\n'.format(this.config.password));
 		
-		// TODO: WebIRC
+		let serverpass = webirc.get_password(this.config.address);
+		
+		if(serverpass)
+			this.socket.write('WEBIRC {0} cgiirc {1} {2}\r\n'.format(serverpass, this.userInfo.hostname, this.userInfo.ipaddr));
+
 		this.socket.write('USER {0} 8 * :{1}\r\n'.format(this.config.username, this.config.realname));
 		this.socket.write('NICK {0}\r\n'.format(this.config.nickname));
 	}

@@ -10,10 +10,13 @@ This application requires [node.js](https://nodejs.org/) to be installed.
 
 The client will be accessible at http://localhost:8080/
 
+### WebIRC
+
+The server will look for passwords in `webirc.data.json`. The format is: `"server-ip-address": "server webirc password"`
+
 ###The (non-complete) TODO List (of things left to do)
 
 * [HIGH] Settings menu
-* [HIGH] WebIRC protocol integration
 * [MEDIUM] Theme engine
 * [NORMAL] CAP negotiation
 * [LOW] Better input

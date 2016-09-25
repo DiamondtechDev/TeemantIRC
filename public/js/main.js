@@ -602,7 +602,8 @@ class Buffer {
 	appendMessage(meta) {
 		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type);
 
-		if((meta.type == "privmsg" || meta.type == "notice") && meta.message.indexOf(irc.serverData[this.server].my_nick) != -1)
+		if((meta.type == "privmsg" || meta.type == "notice" || meta.type == "action") && 
+			meta.message.indexOf(irc.serverData[this.server].my_nick) != -1)
 			addClass(mesgConstr, "mentioned");
 
 		clientdom.letterbox.appendChild(mesgConstr);
@@ -630,7 +631,8 @@ class Buffer {
 			this.appendMessage(mesg);
 		} else {
 			this.unreadCount += 1;
-			if((type == "privmsg" || type == "notice") && message.indexOf(irc.serverData[this.server].my_nick) != -1)
+			if((type == "privmsg" || type == "notice" || type == "action") && 
+				message.indexOf(irc.serverData[this.server].my_nick) != -1)
 				console.log("TODO: notify user of mentioned");
 		}
 
