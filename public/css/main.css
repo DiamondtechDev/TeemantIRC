@@ -654,6 +654,18 @@ body {
 .topicbar .irc-fg15 {
   color: #d3d3d3;
 }
+.message .irc-bold,
+.topicbar .irc-bold {
+  font-weight: bold;
+}
+.message .irc-italic,
+.topicbar .irc-italic {
+  font-style: italic;
+}
+.message .irc-underline,
+.topicbar .irc-underline {
+  text-decoration: underline;
+}
 @media all and (max-width: 600px) {
   .vnicks .nicklist {
     display: none !important;

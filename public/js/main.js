@@ -957,11 +957,50 @@ class IRCConnector {
 class InputHandler {
 	constructor() {
 		this.history = [];
+		this.historyCaret = 0;
 
 		clientdom.input.onkeyup = (evt) => {
 			let key = evt.keyCode || evt.which || evt.charCode || 0;
 			if (key == 13) {
 				this.handleInput();
+			}
+		}
+
+		clientdom.input.onkeydown = (evt) => {
+			let key = evt.keyCode || evt.which || evt.charCode || 0;
+			if(key == 38) {
+				if(this.historyCaret <= 0) {
+					this.historyCaret = 0;
+				} else {
+					this.historyCaret -= 1;
+				}
+
+				let selection = this.history[this.historyCaret];
+
+				if(selection) {
+					clientdom.input.value = selection;
+					clientdom.input.selectionStart = selection.length;
+					clientdom.input.selectionEnd = selection.length;
+				}
+
+				return false;
+			} else if(key == 40) {
+				if(this.historyCaret >= this.history.length) {
+					this.historyCaret = this.history.length;
+				} else {
+					this.historyCaret += 1;
+				}
+
+				let selection = this.history[this.historyCaret]
+
+				if(!this.history[this.historyCaret])
+					selection = '';
+
+				clientdom.input.selectionStart = selection.length;
+				clientdom.input.selectionEnd = selection.length;
+				clientdom.input.value = selection;
+
+				return false;
 			}
 		}
 
@@ -1063,6 +1102,7 @@ class InputHandler {
 		}
 
 		this.history.push(inp);
+		this.historyCaret = this.history.length;
 		clientdom.input.value = "";
 	}
 
