@@ -726,7 +726,16 @@ class IRCConnector {
 		if(window.location.hash)
 			clientdom.connector.channel.value = window.location.hash;
 		if(window.location.pathname.length > 4) {
-			let proposed = window.location.pathname.replace(/\//g, '');
+			let t1 = window.location.pathname.substring(1, window.location.pathname.length-1);
+			let proposed = "";
+
+			if(t1.indexOf('/') != -1) {
+				proposed = t1.split('/');
+				proposed = proposed[proposed.length-1]
+			} else {
+				proposed = t1;
+			}
+
 			if(window.validators.iporhost(proposed))
 				clientdom.connector.server.value = proposed;
 		}
