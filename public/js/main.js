@@ -750,7 +750,7 @@ class IRCConnector {
 									   server: 		server,
 									   port: 		port,
 									   password: 	null,
-									   secure: 	false });
+									   secure: 		clientdom.connector.secure.checked });
 		return true;
 	}
 
@@ -1250,6 +1250,7 @@ window.onload = function() {
 	clientdom.connector['channel'] = clientdom.connector.form.querySelector('#channel');
 	clientdom.connector['server'] = clientdom.connector.form.querySelector('#server');
 	clientdom.connector['port'] = clientdom.connector.form.querySelector('#port');
+	clientdom.connector['secure'] = clientdom.connector.form.querySelector('#secure');
 	clientdom['tabby'] = irc.primaryFrame.querySelector('.tabby')
 	clientdom['frame'] = irc.primaryFrame.querySelector('#chat');
 	clientdom['letterbox'] = clientdom.frame.querySelector('.letterbox');

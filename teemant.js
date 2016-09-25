@@ -109,6 +109,10 @@ io.sockets.on('connection', function (socket) {
 			newConnection.on('line', function(line) {
 				console.log("["+socket.id+"] <-", line);
 			});
+
+			newConnection.on('debug_log', function(data) {
+				console.log("["+socket.id+"] <-", data);
+			});
 		}
 
 		newConnection.on('connerror', (data) => {
@@ -123,6 +127,9 @@ io.sockets.on('connection', function (socket) {
 				inconnect = false;
 			}
 
+			if(config.server.debug)
+				console.log(data);
+
 			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), server: connectiondata.server, message: message, error: true});
 		});
 
@@ -136,6 +143,10 @@ io.sockets.on('connection', function (socket) {
 
 			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
+				
+				if(config.server.debug)
+					console.log(data);
+
 				inconnect = false;
 			}
 

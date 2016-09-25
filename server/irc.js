@@ -1,5 +1,6 @@
 let EventEmitter = require('events').EventEmitter;
 let net = require('net');
+let tls  = require('tls');
 let configuration = require(__dirname+"/config");
 let parse = require(__dirname+"/parser");
 let webirc = require(__dirname+"/webirc");
@@ -174,7 +175,7 @@ class IRCConnectionHandler {
 			case "NOTICE":
 				if(line.user.nickname != "")
 					this.conn.emit('pass_to_client', {type: "message", messageType: "notice", to: line.arguments[0], 
-												 	  user: line.user, message: line.trailing, server: serverName});
+													  user: line.user, message: line.trailing, server: serverName});
 				else
 					this.conn.emit('pass_to_client', {type: "server_message", messageType: "notice", message: line.trailing, server: serverName, from: realServerName});
 				break;
@@ -357,7 +358,8 @@ class IRCConnection extends EventEmitter {
 			autojoin: [],
 			secure: configuration.client.secure_by_default,
 			password: "",
-			address: "0.0.0.0"
+			address: "0.0.0.0",
+			rejectUnauthorized: configuration.tls.rejectUnauthorized
 		};
 
 		this.userInfo = userInfo;
@@ -379,6 +381,7 @@ class IRCConnection extends EventEmitter {
 			max_channel_length: 64,
 			supportedModes: {}
 		};
+		this.authorizationError = '';
 		this.queue = {};
 	}
 
@@ -391,13 +394,14 @@ class IRCConnection extends EventEmitter {
 	}
 
 	connect() {
-		this.socket = net.createConnection(this.config.port, this.config.server, () => {
+		this.socket = (this.config.secure ? tls : net).connect({port: this.config.port, host: this.config.server, 
+																rejectUnauthorized: this.config.rejectUnauthorized}, () => {
 			this.connected = true;
 			this.authenticate();
 		});
 
-		this.socket.setEncoding('utf8');
-		this.socket.setTimeout(3000);
+		this.socket.setEncoding(configuration.client.encoding);
+		this.socket.setTimeout(configuration.client.timeout);
 
 		this.socket.on('error', (data) => {
 			this.emit('connerror', {type: "sock_error", message: "A socket error occured.", raw: data});
