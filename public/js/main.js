@@ -253,8 +253,11 @@ let composer = {
 
 			switch(type) {
 				case "mode":
+					element.innerHTML += "<span class='asterisk'>&#8505;</span>&nbsp;<span class='actionee nick'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='content'>"+message+"</span>";
+					break;
 				case "action":
-					element.innerHTML += "<span class='asterisk'>*</span>&nbsp;<span class='actionee nick'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='asterisk'>&#9889;</span>&nbsp;<span class='actionee nick'>"+sender+"</span>&nbsp;";
 					element.innerHTML += "<span class='content'>"+message+"</span>";
 					break;
 				case "part":
@@ -484,12 +487,10 @@ class Tab {
 		clientdom.tabby.appendChild(ttt);
 		this.element = ttt;
 
-		if(this.buffer.type != "server") {
-			ttt.innerHTML += "<span id='close'>x</span>"
-			ttt.querySelector('#close').addEventListener('click', () => {
-				this.close();
-			}, false);
-		}
+		ttt.innerHTML += "<span id='close'>x</span>"
+		ttt.querySelector('#close').addEventListener('click', () => {
+			this.close();
+		}, false);
 
 		ttt.addEventListener('click', () => {
 			if(this.closeRequested) return;
@@ -664,6 +665,7 @@ class Buffer {
 class IRCConnector {
 	constructor() {
 		this.formLocked = false;
+		this.canClose = false;
 
 		clientdom.connector.form.onsubmit = (e) => {
 			if(this.formLocked) {
@@ -674,6 +676,12 @@ class IRCConnector {
 			this.formLocked = true;
 
 			this.validateForm(e);
+		}
+
+		clientdom.connector.onkeyup = (e) => {
+			let key = evt.keyCode || evt.which || evt.charCode || 0;
+			if(key === 27 && this.canClose)
+				this.authComplete();
 		}
 	}
 
@@ -809,6 +817,9 @@ class InputHandler {
 						}
 					}
 					break;
+				case "quit":
+					irc.socket.emit("userinput", {command: "quit", server: buf.server, message: listargs.slice(1).join(" "), arguments: []});
+					break;
 				case "msg":
 				case "privmsg":
 				case "say":
@@ -843,6 +854,11 @@ class InputHandler {
 
 					irc.socket.emit("userinput", {command: "whois", server: buf.server, message: "", arguments: [listargs[1]]});
 					break;
+				case "connect":
+					clientdom.connector.frame.style.display = "block";
+					irc.auther.authMessage("Create a new connection", false);
+					irc.auther.canClose = true;
+					break;
 				default:
 					this.commandError(buf, listargs[0].toUpperCase()+': Unknown command!');
 			}
@@ -870,6 +886,17 @@ class IRCChatWindow {
 		clientdom.smsctrig.onclick = (e) => {
 			toggleClass(clientdom.chat, "vopentrig");
 		}
+	}
+
+	destroyAllBuffers() {
+		for(let b in this.buffers) {
+			this.buffers[b].tab.element.remove();
+			this.buffers.splice(b, 1);
+		}
+		irc.serverData = {};
+		irc.auther.authMessage("Disconnected", true);
+		clientdom.frame.style.display = "none";
+		this.firstServer = true;
 	}
 
 	getBufferByName(buffername) {
@@ -935,6 +962,9 @@ class IRCChatWindow {
 	newServerBuffer(serverinfo) {
 		if(this.firstServer) {
 			clientdom.frame.style.display = "block";
+			window.onbeforeunload = function(e) {
+				return 'IRC will disconnect.';
+			}
 		}
 
 		let prefixes = "";
@@ -984,8 +1014,9 @@ class IRCChatWindow {
 	}
 
 	closeBuffer(buffer) {
-		if(buffer.type == "server") return; // Don't close server buffers, lol
-		if(buffer.type == "channel" && buffer.alive)
+		if(buffer.type == "server")
+			irc.socket.emit("userinput", {command: "quit", server: buffer.server, message: "Server tab closed", arguments: []});
+		else if(buffer.type == "channel" && buffer.alive)
 			irc.socket.emit("userinput", {command: "part", server: buffer.server, message: "Tab closed", arguments: [buffer.name]});
 		
 		let bufIndex = this.buffers.indexOf(buffer);
@@ -1002,6 +1033,13 @@ class IRCChatWindow {
 
 		buffer.tab.element.remove();
 		this.buffers.splice(bufIndex, 1);
+
+		if(this.buffers.length == 0) {
+			irc.chat.destroyAllBuffers();
+			irc.auther.authMessage("Create a new connection", false);
+			irc.auther.canClose = false;
+			clientdom.connector.frame.style.display = "block";
+		}
 	}
 
 	messageBuffer(name, server, message) {
@@ -1226,7 +1264,8 @@ window.onload = function() {
 
 	irc.socket.on('disconnect', function (data) {
 		irc.socketUp = false;
-		alert("Server died. Please try again later.");
+		irc.chat.destroyAllBuffers();
+		clientdom.connector.frame.style.display = "block";
 	});
 
 	// Does everything
@@ -1249,6 +1288,14 @@ window.onload = function() {
 				break;
 			case "event_quit":
 				irc.chat.handleQuit(data.server, data.user, data.reason);
+				break;
+			case "event_server_quit":
+				let serverz = irc.chat.getBuffersByServer(data.server);
+				for(let a in serverz) {
+					let serv = serverz[a];
+					serv.addMessage("You are no longer talking on this server.", null, "error");
+					serv.setAliveStatus(false);
+				}
 				break;
 			case "message":
 				if(data.to == irc.serverData[data.server].my_nick) {

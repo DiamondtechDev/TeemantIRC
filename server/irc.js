@@ -31,7 +31,7 @@ class IRCConnectionHandler {
 				this.conn.write('{0} {1}'.format(data.command.toUpperCase(), data.arguments[0]));
 				break;
 			case "quit":
-				this.conn.write('{0} :{1}'.format(data.command.toUpperCase(), data.message));
+				this.conn.write('{0} :{1}'.format(data.command.toUpperCase(), (data.message == '' ? configuration.client.default_quit_msg : data.message)));
 				break;
 			case "privmsg":
 				this.conn.write('PRIVMSG {0} :{1}'.format(data.arguments[0], data.message));

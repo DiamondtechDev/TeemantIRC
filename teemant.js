@@ -12,7 +12,7 @@ let ircclient = require(__dirname+'/server/irc');
 
 let port = config.server.port || 8080;
 
-let connections = {}
+let connections = {};
 
 app.get("/", function(req, res){
 	res.sendFile(pubdir+"/index.html");
@@ -79,12 +79,15 @@ io.sockets.on('connection', function (socket) {
 			let message = "An error occured";
 			let inconnect = true;
 		
+			if(data['message'])
+				message = data.message;
+
 			if(newConnection.authenticated == false) {
 				message = "Failed to connect to the server!";
 				inconnect = false;
 			}
 
-			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});
+			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), server: connectiondata.server, message: message, error: true});
 		});
 
 		newConnection.on('pass_to_client', (data) => {
@@ -100,7 +103,10 @@ io.sockets.on('connection', function (socket) {
 				inconnect = false;
 			}
 
-			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), message: message, error: true});
+			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), server: connectiondata.server, message: message, error: true});
+			
+			if(inconnect)
+				socket.emit('act_client', {type: 'event_server_quit', server: connectiondata.server});
 		});
 	});
 });
