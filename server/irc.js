@@ -269,6 +269,18 @@ class IRCConnectionHandler {
 				};
 				this.whoisManage(line.arguments[1], list);
 				break;
+			case "378":
+				list = {
+					connectingFrom: line.trailing,
+				};
+				this.whoisManage(line.arguments[1], list);
+				break;
+			case "379":
+				list = {
+					usingModes: line.trailing,
+				};
+				this.whoisManage(line.arguments[1], list);
+				break;
 			case "312":
 				list = {
 					server: line.arguments[2],
@@ -431,7 +443,7 @@ class IRCConnection extends EventEmitter {
 			this.socket.write('PASS {0}\r\n'.format(this.config.password));
 		
 		let serverpass = webirc.get_password(this.config.address);
-		
+
 		if(serverpass)
 			this.socket.write('WEBIRC {0} cgiirc {1} {2}\r\n'.format(serverpass, this.userInfo.hostname, this.userInfo.ipaddr));
 

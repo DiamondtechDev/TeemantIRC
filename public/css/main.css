@@ -180,7 +180,7 @@ body {
   bottom: 46px;
 }
 .ircclient #chat .ircwrapper .chatarea .smsc-nicklistbtn {
-  background-image: url("image/users.svg");
+  background-image: url("../image/users.svg");
   background-repeat: no-repeat;
   background-size: contain;
   width: 46px;
@@ -313,7 +313,7 @@ body {
   box-shadow: inset 4px 4px 8px #d8d8d8;
 }
 .ircclient #chat .ircwrapper .input .sendbutton {
-  background-image: url("image/send.svg");
+  background-image: url("../image/send.svg");
   background-repeat: no-repeat;
   background-size: contain;
   width: 32px;
