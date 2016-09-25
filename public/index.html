@@ -40,16 +40,33 @@
 			<div class="coverwindow" id="chat" style="display: none;">
 				<div class="ircwrapper">
 					<div class="toolbar">
-						<span class="logo"></span>
-						<div class="tabby">
-							
-						</div>
+						<div class="tabby"></div>
+						<span class="open_settings"></span>
 					</div>
 					<div class="chatarea">
 						<div class="smsc-nicklistbtn"></div>
 						<div class="topicbar"></div>
 						<div class="letterbox"></div>
 						<div class="nicklist"></div>
+						<div class="settings" style="display: none;">
+							<h1 class="grade1">Teemant Settings</h1>
+							<h1 class="grade2">Chat</h1>
+							<p>Shared input field <input type="checkbox" name="colors" id="s_sharedInput"></p>
+							<h1 class="grade3">Colors</h1>
+							<p>Enable colored messages <input type="checkbox" name="colors" id="s_colors" checked="checked"></p>
+							<p>Color nicknames <input type="checkbox" name="colored_nicks" id="s_colorNicknames" checked="checked"></p>
+							<p>Color nicknames in the user list<input type="checkbox" name="colored_nicks_list" id="s_colorNicklist"></p>
+							<h1 class="grade3">Timestamps</h1>
+							<p>Enable timestamps on messages <input type="checkbox" name="timestamps" id="s_timestamps" checked="checked"></p>
+							<label for="timestamp_format">Timestamp format</label>
+							<input type="text" name="timestamp_format" id="s_timestampFormat" value="HH:mm:ss"><br>
+							<i style="font-size: 80%;">`<code>hh:mm:ss TT</code>` would be 12-hour format with PM/AM</i>
+							<h1 class="grade3">Themes</h1>
+							<p><i>Coming soon!</i></p>
+							<br>
+							<p><button class="regular_btn" id="save_settings">Save Settings</button></p>
+							<span class="grade3" id="settings_status"></span>
+						</div>
 					</div>
 					<div class="input">
 						<div class="my_nickname">Test</div>

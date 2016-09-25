@@ -1,14 +1,20 @@
 window.irc = {
 	socketUp: false,
 	primaryFrame: null,
-	timestamps: true,
-	timestampFormat: "HH:mm:ss",
+	config: {
+		colors: true,
+		sharedInput: false,
+		timestamps: true,
+		timestampFormat: "HH:mm:ss",
+		colorNicknames: true,
+		colorNicklist: false
+	},
 	serverData: {},
 	serverChatQueue: {},
 	chatType: "simple",
 };
 
-window.clientdom = {connector: {}};
+window.clientdom = {connector: {}, settings: {}};
 
 window.colorizer = {
 	theme: {
@@ -22,6 +28,9 @@ window.colorizer = {
 		let s = rand(colorizer.theme.S[0], colorizer.theme.S[1]); // saturation 30-100%
 		let l = rand(colorizer.theme.L[0], colorizer.theme.L[1]); // lightness 30-70%
 		return 'hsl(' + h + ',' + s + '%,' + l + '%)';
+	},
+	strip: function(message) {
+		return message.replace(/(\x03\d{0,2}(,\d{0,2})?)/g, '').replace(/[\x0F\x02\x16\x1F]/g, '');
 	}
 }
 
@@ -249,10 +258,14 @@ let composer = {
 			let element = document.createElement('div');
 			element.className = "message type_simple m_"+type;
 
-			if(irc.timestamps)
-				element.innerHTML += "<span class='timestamp'>"+time.format(irc.timestampFormat)+"</span>&nbsp;";
+			if(irc.config.timestamps)
+				element.innerHTML += "<span class='timestamp'>"+time.format(irc.config.timestampFormat)+"</span>&nbsp;";
 
-			message = colorizer.stylize(message);
+			if(irc.config.colors)
+				message = colorizer.stylize(message);
+			else
+				message = colorizer.strip(message);
+
 			message = linkify(message);
 
 			switch(type) {
@@ -284,18 +297,19 @@ let composer = {
 					break;
 			}
 
-			if(sender) {
-				let sndr1 = element.querySelector('.sender');
-				if(sndr1)
-					sndr1.style.color = colorizer.get_random_color(sndr1.innerHTML);
-			}
+			if(irc.config.colorNicknames == true) {
+				if(sender) {
+					let sndr1 = element.querySelector('.sender');
+					if(sndr1)
+						sndr1.style.color = colorizer.get_random_color(sndr1.innerHTML);
+				}
 
-			let sndr2 = element.querySelectorAll('.nick');
-			if(sndr2.length > 0)
-				for(let a in sndr2)
-					if(sndr2[a] && sndr2[a]['style'])
-						sndr2[a].style.color = colorizer.get_random_color(sndr2[a].innerHTML);
-			
+				let sndr2 = element.querySelectorAll('.nick');
+				if(sndr2.length > 0)
+					for(let a in sndr2)
+						if(sndr2[a] && sndr2[a]['style'])
+							sndr2[a].style.color = colorizer.get_random_color(sndr2[a].innerHTML);
+			}
 			return element;
 		}
 	}
@@ -345,7 +359,11 @@ class Nicklist {
 		else
 			construct += "<span class='no-prefix'>&nbsp;</span>";
 
-		construct += "<span class='nickname'>"+nick.nickname+"</span>";
+		if(irc.config.colorNicklist)
+			construct += "<span class='nickname' style='color: "+colorizer.get_random_color(nick.nickname)+";'>"+nick.nickname+"</span>";
+		else
+			construct += "<span class='nickname'>"+nick.nickname+"</span>";
+
 		str.innerHTML = construct;
 		clientdom.nicklist.appendChild(str);
 	}
@@ -556,8 +574,10 @@ class Buffer {
 		this.active = false;
 		this.alive = true;
 
-		this.tab = new Tab(this);
-		this.tab.renderTab(clientdom.tabby);
+		if(type != "settings") {
+			this.tab = new Tab(this);
+			this.tab.renderTab();
+		}
 
 		if(type == "channel")
 			this.nicklist = new Nicklist(this, clientdom.nicklist);
@@ -573,6 +593,9 @@ class Buffer {
 		clientdom.nicklist.innerHTML = "";
 		clientdom.topicbar.innerHTML = "";
 
+		if(!irc.config.sharedInput)
+			clientdom.input.value = this.input;
+
 		if(this.nicklist) {
 			addClass(clientdom.chat, 'vnicks');
 			this.nicklist.render();
@@ -580,7 +603,10 @@ class Buffer {
 
 		if(this.topic != null && this.topic != "") {
 			addClass(clientdom.chat, 'vtopic');
-			clientdom.topicbar.innerHTML = linkify(colorizer.stylize(this.topic));
+			if(irc.config.colors)
+				clientdom.topicbar.innerHTML = linkify(colorizer.stylize(this.topic));
+			else
+				clientdom.topicbar.innerHTML = linkify(colorizer.strip(this.topic));
 		}
 
 		this.renderMessages();
@@ -621,7 +647,10 @@ class Buffer {
 
 	topicChange(topic) {
 		if(this.active) {
-			clientdom.topicbar.innerHTML = linkify(colorizer.stylize(topic));
+			if(irc.config.colors)
+				clientdom.topicbar.innerHTML = linkify(colorizer.stylize(topic));
+			else
+				clientdom.topicbar.innerHTML = linkify(colorizer.strip(topic));
 
 			if(this.topic == null)
 				addClass(clientdom.chat, "vtopic");
@@ -654,6 +683,9 @@ class Buffer {
 		else
 			this.wasAtBottom = false;
 
+		if(!irc.config.sharedInput)
+			this.input = clientdom.input.value;
+
 		this.tab.setActive(false);
 		this.lastscroll = clientdom.letterbox.scrollTop;
 		this.active = false;
@@ -669,6 +701,114 @@ class Buffer {
 
 	closeBuffer() {
 		irc.chat.closeBuffer(this);
+	}
+}
+
+class Settings extends Buffer {
+	constructor() {
+		super("", "settings", "Settings", "settings");
+		this.tab = null;
+		this.isOpen = false;
+		this.timeout = null;
+
+		clientdom.settings.save.onclick = (e) => {
+			this.saveSpecified();
+		}
+
+		clientdom.settings.open.onclick = (e) => {
+			this.open();
+		}
+	}
+
+	open() {
+		if(this.isOpen) {
+			irc.chat.render(this);
+			return;
+		}
+
+		this.tab = new Tab(this);
+		this.tab.renderTab();
+		irc.chat.buffers.push(this);
+		irc.chat.render(this);
+		this.isOpen = true;
+	}
+
+	closeBuffer() {
+		irc.chat.closeBuffer(this);
+		this.tab = null;
+		this.isOpen = false;
+	}
+
+	saveSpecified() {
+		if(this.timeout)
+			clearTimeout(this.timeout);
+
+		for(let key in irc.config) {
+			let value = irc.config[key];
+			let type = typeof(value);
+
+			if(type == "boolean")
+				irc.config[key] = clientdom.settings[key].checked;
+			else
+				irc.config[key] = clientdom.settings[key].value;
+		}
+		clientdom.settings.saveStatus.innerHTML = "<span class='success'>Settings saved!</span>";
+
+		if("localStorage" in window) {
+			window.localStorage['teemant_settings'] = JSON.stringify(irc.config);
+		}
+
+		this.timeout = setTimeout(function() {
+			clientdom.settings.saveStatus.innerHTML = "";
+		}, 3000);
+	}
+
+	setInitialValues() {
+		if("localStorage" in window) {
+			if(window.localStorage['teemant_settings']) {
+				try {
+					let settings = JSON.parse(window.localStorage.teemant_settings);
+					for(let key in irc.config) {
+						let value = irc.config[key];
+						let type = typeof(value);
+						if(settings[key]) {
+							if(type == "boolean")
+								clientdom.settings[key].checked = settings[key];
+							else
+								clientdom.settings[key].value = settings[key];
+						}
+					}
+					this.saveSpecified();
+					return;
+				} catch(e) {}
+			}
+		}
+
+		for(let key in irc.config) {
+			let value = irc.config[key];
+			let type = typeof(value);
+
+			if(type == "boolean")
+				clientdom.settings[key].checked = value;
+			else
+				clientdom.settings[key].value = value;
+		}
+	}
+
+	switchOff() {
+		this.active = false;
+		this.tab.setActive(false);
+		clientdom.settings.frame.style.display = "none";
+	}
+
+	render() {
+		this.active = true;
+		this.tab.setActive(true);
+		clientdom.chat.className = "chatarea";
+		clientdom.nicklist.innerHTML = "";
+		clientdom.topicbar.innerHTML = "";
+		clientdom.letterbox.innerHTML = "";
+		clientdom.settings.frame.style.display = "block";
 	}
 }
 
@@ -1311,6 +1451,14 @@ window.onpopstate = parseURL;
 window.onload = function() {
 	irc.primaryFrame = document.querySelector('.ircclient');
 
+	clientdom.settings['frame'] = irc.primaryFrame.querySelector('.settings');
+
+	for(let key in irc.config) {
+		clientdom.settings[key] = clientdom.settings.frame.querySelector('#s_'+key);
+	}
+
+	clientdom.settings['save'] = clientdom.settings.frame.querySelector('#save_settings');
+	clientdom.settings['saveStatus'] = clientdom.settings.frame.querySelector('#settings_status');
 	clientdom.connector['frame'] = irc.primaryFrame.querySelector('#authdialog');
 	clientdom.connector['messenger'] = clientdom.connector.frame.querySelector('#connmsg');
 	clientdom.connector['form'] = clientdom.connector.frame.querySelector('#IRCConnector');
@@ -1329,13 +1477,16 @@ window.onload = function() {
 	clientdom['chat'] = clientdom.frame.querySelector('.chatarea');
 	clientdom['topicbar'] = clientdom.chat.querySelector('.topicbar');
 	clientdom['smsctrig'] = clientdom.chat.querySelector('.smsc-nicklistbtn');
+	clientdom.settings['open'] = irc.primaryFrame.querySelector('.open_settings');
 
 	irc.socket = io.connect();
 
+	irc.settings = new Settings();
 	irc.auther = new IRCConnector();
 	irc.chat = new IRCChatWindow();
 
 	parseURL();
+	irc.settings.setInitialValues();
 
 	irc.socket.on('connect', function (data) {
 		irc.socketUp = true;

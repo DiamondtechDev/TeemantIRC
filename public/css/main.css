@@ -51,6 +51,8 @@ body {
   padding: 15px;
   background-color: #f7f7f7;
   border: 1px solid #dadada;
+  -webkit-box-shadow: 4px 4px 18px #d6d6d6;
+  -moz-box-shadow: 4px 4px 18px #d6d6d6;
   box-shadow: 4px 4px 18px #d6d6d6;
 }
 .ircclient .coverwindow .wrapper .msg.error {
@@ -68,6 +70,8 @@ body {
   width: 300px;
   border-radius: 5px;
   border: 1px solid #d2d2d2;
+  -webkit-box-shadow: inset 2px 2px 4px #dcdcdc;
+  -moz-box-shadow: inset 2px 2px 4px #dcdcdc;
   box-shadow: inset 2px 2px 4px #dcdcdc;
 }
 .ircclient .coverwindow .wrapper input[type="submit"] {
@@ -93,6 +97,9 @@ body {
   background: -webkit-linear-gradient(top, #c4effc 0%, #7fd5ef 40%, #39b7dd 100%);
   background: linear-gradient(to bottom, #c4effc 0%, #7fd5ef 40%, #39b7dd 100%);
 }
+.ircclient #chat {
+  overflow: hidden;
+}
 .ircclient #chat .ircwrapper {
   position: absolute;
   width: 100%;
@@ -103,20 +110,36 @@ body {
   background-color: #00c7e0;
   position: relative;
   z-index: 15;
+  -webkit-box-shadow: 2px 2px 4px #cecece;
+  -moz-box-shadow: 2px 2px 4px #cecece;
   box-shadow: 2px 2px 4px #cecece;
 }
-.ircclient #chat .ircwrapper .toolbar .logo {
-  width: 56px;
-  height: 56px;
+.ircclient #chat .ircwrapper .toolbar .open_settings {
+  width: 36px;
+  height: 36px;
   display: inline-block;
-  margin: 0 5px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  cursor: pointer;
+  background-image: url("../image/settings.svg");
+  background-repeat: no-repeat;
+  background-size: contain;
+  -webkit-transition: transform 0.2s linear;
+  -moz-transition: transform 0.2s linear;
+  -ms-transition: transform 0.2s linear;
+  -o-transition: transform 0.2s linear;
+  transition: transform 0.2s linear;
+}
+.ircclient #chat .ircwrapper .toolbar .open_settings:hover {
+  transform: rotateZ(-90deg);
 }
 .ircclient #chat .ircwrapper .toolbar .tabby {
   display: inline-block;
   height: 56px;
   position: absolute;
-  left: 60px;
-  right: 0;
+  right: 45px;
+  left: 0;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -130,8 +153,15 @@ body {
   padding: 10px;
   line-height: 25px;
   background-color: #29e1ff;
+  -webkit-transition: background-color 0.2s linear;
+  -moz-transition: background-color 0.2s linear;
+  -ms-transition: background-color 0.2s linear;
+  -o-transition: background-color 0.2s linear;
+  transition: background-color 0.2s linear;
   border-radius: 5px;
   border: 1px solid #00d0ea;
+  -webkit-box-shadow: inset 4px 4px 8px #44ebff;
+  -moz-box-shadow: inset 4px 4px 8px #44ebff;
   box-shadow: inset 4px 4px 8px #44ebff;
   color: #fff;
   cursor: pointer;
@@ -143,6 +173,8 @@ body {
   height: 18px;
   background-color: #bf0000;
   border: 1px solid #b00;
+  -webkit-box-shadow: inset 2px 2px 3px #f00;
+  -moz-box-shadow: inset 2px 2px 3px #f00;
   box-shadow: inset 2px 2px 3px #f00;
   text-align: center;
   font-size: 12px;
@@ -158,15 +190,19 @@ body {
   width: 12px;
   text-align: center;
   color: #ff3d3d;
-  float: right;
+  margin-left: 5px;
 }
 .ircclient #chat .ircwrapper .toolbar .tabby .tab:hover {
   background-color: #63e9ff;
+  -webkit-box-shadow: inset 4px 4px 8px #86f2ff;
+  -moz-box-shadow: inset 4px 4px 8px #86f2ff;
   box-shadow: inset 4px 4px 8px #86f2ff;
 }
 .ircclient #chat .ircwrapper .toolbar .tabby .tab.active {
   background-color: #00b9d8;
   border: 1px solid #009aad;
+  -webkit-box-shadow: inset 4px 4px 8px #009caf;
+  -moz-box-shadow: inset 4px 4px 8px #009caf;
   box-shadow: inset 4px 4px 8px #009caf;
   color: #fff;
 }
@@ -223,6 +259,7 @@ body {
   overflow-y: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
+  padding: 5px;
 }
 .ircclient #chat .ircwrapper .chatarea .nicklist {
   width: 280px;
@@ -262,6 +299,23 @@ body {
 .ircclient #chat .ircwrapper .chatarea .nicklist .nick .no-prefix {
   width: 25px;
   display: inline-block;
+}
+.ircclient #chat .ircwrapper .chatarea .settings {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  width: 60%;
+  min-width: 360px;
+  margin: auto;
+  overflow: auto;
+}
+.ircclient #chat .ircwrapper .chatarea .settings .grade1,
+.ircclient #chat .ircwrapper .chatarea .settings .grade2,
+.ircclient #chat .ircwrapper .chatarea .settings .grade3 {
+  text-align: left;
 }
 .ircclient #chat .ircwrapper .chatarea.vnicks .nicklist {
   display: block;
@@ -310,6 +364,8 @@ body {
   font-size: 120%;
   border: 1px solid #929292;
   border-left: 0;
+  -webkit-box-shadow: inset 4px 4px 8px #d8d8d8;
+  -moz-box-shadow: inset 4px 4px 8px #d8d8d8;
   box-shadow: inset 4px 4px 8px #d8d8d8;
 }
 .ircclient #chat .ircwrapper .input .sendbutton {

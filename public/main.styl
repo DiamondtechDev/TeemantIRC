@@ -1,4 +1,21 @@
 // Run `stylus -w main.styl -o css` to compile
+props(prop, args)
+    -webkit-{prop} args
+    -moz-{prop} args
+    -ms-{prop} args
+    -o-{prop} args
+    {prop} args
+    
+props2(prop, args)
+    -webkit-{prop} args
+    -moz-{prop} args
+    {prop} args
+    
+transition()
+    props('transition', arguments)
+
+box-shadow()
+    props2('box-shadow', arguments)
 
 body
     margin: 0
@@ -50,7 +67,7 @@ body
             padding: 15px
             background-color: #f7f7f7;
             border: 1px solid #dadada;
-            box-shadow: 4px 4px 18px #d6d6d6;
+            box-shadow 4px 4px 18px #d6d6d6;
             .msg.error
                 color: red;
             label
@@ -63,7 +80,7 @@ body
                 width: 300px;
                 border-radius: 5px;
                 border: 1px solid #d2d2d2;
-                box-shadow: inset 2px 2px 4px #dcdcdc;
+                box-shadow inset 2px 2px 4px #dcdcdc;
             input[type="submit"]
                 width: 318px;
                 padding: 12px;
@@ -86,6 +103,7 @@ body
                     background: -webkit-linear-gradient(top, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
                     background: linear-gradient(to bottom, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
     #chat
+        overflow: hidden;
         .ircwrapper
             position: absolute
             width: 100%
@@ -95,18 +113,27 @@ body
                 background-color: #00c7e0
                 position: relative
                 z-index: 15
-                box-shadow: 2px 2px 4px #cecece
-                .logo
-                    width: 56px;
-                    height: 56px;
+                box-shadow 2px 2px 4px #cecece
+                .open_settings
+                    width: 36px;
+                    height: 36px;
                     display: inline-block;
-                    margin: 0 5px;
+                    position: absolute;
+                    right: 10px;
+                    top: 10px;
+                    cursor: pointer;
+                    background-image: url(../image/settings.svg);
+                    background-repeat: no-repeat;
+                    background-size: contain;
+                    transition transform 0.2s linear
+                    &:hover
+                        transform: rotateZ(-90deg);
                 .tabby
                     display: inline-block;
                     height: 56px;
                     position: absolute;
-                    left: 60px;
-                    right: 0;
+                    right: 45px;
+                    left: 0;
                     white-space: nowrap;
                     overflow-x: auto;
                     overflow-y: hidden;
@@ -119,9 +146,10 @@ body
                         padding: 10px;
                         line-height: 25px;
                         background-color: #29e1ff;
+                        transition background-color 0.2s linear
                         border-radius: 5px;
                         border: 1px solid #00d0ea;
-                        box-shadow: inset 4px 4px 8px #44ebff;
+                        box-shadow inset 4px 4px 8px #44ebff;
                         color: #fff;
                         cursor: pointer;
                         font-weight: 600;
@@ -131,7 +159,7 @@ body
                             height: 18px;
                             background-color: #bf0000;
                             border: 1px solid #b00;
-                            box-shadow: inset 2px 2px 3px #f00;
+                            box-shadow inset 2px 2px 3px #f00;
                             text-align: center;
                             font-size: 12px;
                             margin: 0 5px;
@@ -144,14 +172,14 @@ body
                             width: 12px;
                             text-align: center;
                             color: #ff3d3d;
-                            float: right;
+                            margin-left: 5px
                         &:hover
                             background-color: #63e9ff;
-                            box-shadow: inset 4px 4px 8px #86f2ff;
+                            box-shadow inset 4px 4px 8px #86f2ff;
                         &.active
                             background-color: #00b9d8;
                             border: 1px solid #009aad;
-                            box-shadow: inset 4px 4px 8px #009caf;
+                            box-shadow inset 4px 4px 8px #009caf;
                             color: #ffffff;
                             &:hover
                                 background-color: #00c7e8;
@@ -201,6 +229,7 @@ body
                     overflow-y: auto;
                     white-space: pre-wrap;
                     word-wrap: break-word;
+                    padding: 5px;
                 .nicklist
                     width: 280px;
                     position: absolute;
@@ -234,6 +263,19 @@ body
                         .no-prefix
                             width: 25px;
                             display: inline-block;
+                .settings
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    padding: 20px;
+                    width: 60%;
+                    min-width: 360px;
+                    margin: auto;
+                    overflow: auto;
+                    .grade1, .grade2, .grade3
+                        text-align: left;
                 &.vnicks
                     .nicklist
                         display: block;
@@ -275,7 +317,7 @@ body
                         font-size: 120%
                         border: 1px solid #929292
                         border-left: 0
-                        box-shadow: inset 4px 4px 8px #d8d8d8
+                        box-shadow inset 4px 4px 8px #d8d8d8
                 .sendbutton
                     background-image: url(../image/send.svg);
                     background-repeat: no-repeat;

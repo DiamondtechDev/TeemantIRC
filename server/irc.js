@@ -186,7 +186,7 @@ class IRCConnectionHandler {
 				this.conn.emit('pass_to_client', {type: "nick_change", nick: line.user.nickname, newNick: line.arguments[0], server: serverName});
 				break;
 			case "KICK":
-				this.conn.emit('pass_to_client', {type: "event_kick_channel", user: line.user, channel: line.arguments[0], kickee: line.arguments[1], server: serverName});
+				this.conn.emit('pass_to_client', {type: "event_kick_channel", user: line.user, channel: line.arguments[0], reason: line.trailing, kickee: line.arguments[1], server: serverName});
 				break;
 			case "TOPIC":
 				this.conn.emit('pass_to_client', {type: "channel_topic", channel: line.arguments[0], set_by: line.user.nickname, topic: line.trailing, server: serverName});
