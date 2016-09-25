@@ -5,6 +5,7 @@ let path = require("path");
 let sockio = require("socket.io");
 let dns = require("dns");
 let app = express();
+let router = express.Router();
 
 let pubdir = path.join(__dirname, "public");
 let config = require(__dirname+'/server/config');
@@ -16,11 +17,17 @@ let connections = {};
 
 process.stdin.resume();
 
-app.get("/", function(req, res){
+router.get("/", function(req, res){
 	res.sendFile(pubdir+"/index.html");
 });
 
-app.use(express.static(__dirname + '/public'));
+router.get("/:server", function(req, res){
+	res.sendFile(pubdir+"/index.html");
+});
+
+app.use('/', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
+app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
+app.use('/', router);
 
 let io = sockio.listen(app.listen(port, function() {
 	console.log("*** Listening on http://localhost:" + port + "/");
@@ -53,7 +60,7 @@ io.sockets.on('connection', function (socket) {
 
 	// Get the hostname of the connecting user
 	let hostQuery = resolveHostname(userip);
-	hostQuery.then((arr) => { 
+	hostQuery.then((arr) => {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
 		if(config.server.debug)

@@ -449,7 +449,7 @@ class IRCConnection extends EventEmitter {
 		let serverpass = webirc.get_password(this.config.address);
 
 		if(serverpass)
-			this.socket.write('WEBIRC {0} cgiirc {1} {2}\r\n'.format(serverpass, this.userInfo.hostname, this.userInfo.ipaddr));
+			this.socket.write('WEBIRC {0} {1} {2} {3}\r\n'.format(serverpass, this.config.username, this.userInfo.hostname, this.userInfo.ipaddr));
 
 		this.socket.write('USER {0} 8 * :{1}\r\n'.format(this.config.username, this.config.realname));
 		this.socket.write('NICK {0}\r\n'.format(this.config.nickname));

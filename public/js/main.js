@@ -25,6 +25,8 @@ window.colorizer = {
 	}
 }
 
+let urlParams = {};
+
 /*********************\
 |**                 **|
 |**    UTILITIES    **|
@@ -693,6 +695,43 @@ class IRCConnector {
 		}
 	}
 
+	fillFormFromURI() {
+		for(let param in urlParams) {
+			let value = urlParams[param];
+
+			switch(param) {
+				case "nick":
+				case "nickname":
+					if (window.validators.nickname(value))
+						clientdom.connector.nickname.value = value.replace(/\?/g, rand(10000, 99999));
+					break;
+				case "secure":
+				case "ssl":
+					if(value == "true" || value == "1")
+						clientdom.connector.secure.checked = true;
+					break;
+				case "server":
+				case "host":
+					if(window.validators.iporhost(value))
+						clientdom.connector.server.value = value;
+					break;
+				case "port":
+					try {
+						let ppp = parseInt(value);
+						clientdom.connector.port.value = ppp;
+					} catch(e) {}
+					break;
+			}
+		}
+		if(window.location.hash)
+			clientdom.connector.channel.value = window.location.hash;
+		if(window.location.pathname.length > 4) {
+			let proposed = window.location.pathname.replace(/\//g, '');
+			if(window.validators.iporhost(proposed))
+				clientdom.connector.server.value = proposed;
+		}
+	}
+
 	validateForm(event) {
 		event.preventDefault();
 
@@ -897,11 +936,15 @@ class IRCChatWindow {
 	}
 
 	destroyAllBuffers() {
-		for(let b in this.buffers) {
-			this.buffers[b].tab.element.remove();
-			this.buffers.splice(b, 1);
-		}
+		// Wipe all server data
 		irc.serverData = {};
+		irc.serverChatQueue = {};
+		this.buffers = [];
+
+		// Clear tabs
+		clientdom.tabby.innerHTML = "";
+
+		// Reset to the defaults
 		irc.auther.authMessage("Disconnected", true);
 		clientdom.frame.style.display = "none";
 		this.firstServer = true;
@@ -1240,6 +1283,22 @@ class IRCChatWindow {
 |**                      **|
 \**************************/
 
+function parseURL() {
+	let match,
+		pl     = /\+/g,  // Regex for replacing addition symbol with a space
+		search = /([^&=]+)=?([^&]*)/g,
+		decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+		query  = window.location.search.substring(1);
+
+	urlParams = {};
+	while (match = search.exec(query))
+		urlParams[decode(match[1])] = decode(match[2]);
+
+	irc.auther.fillFormFromURI();
+}
+
+window.onpopstate = parseURL;
+
 window.onload = function() {
 	irc.primaryFrame = document.querySelector('.ircclient');
 
@@ -1266,6 +1325,8 @@ window.onload = function() {
 
 	irc.auther = new IRCConnector();
 	irc.chat = new IRCChatWindow();
+
+	parseURL();
 
 	irc.socket.on('connect', function (data) {
 		irc.socketUp = true;
@@ -1364,4 +1425,4 @@ window.onload = function() {
 				break;
 		}
 	});
-}
+};
