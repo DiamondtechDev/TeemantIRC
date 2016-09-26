@@ -16,7 +16,6 @@ The server will look for passwords in `webirc.data.json`. The format is: `"serve
 
 ###The (non-complete) TODO List (of things left to do)
 
-* [HIGH] Settings menu
 * [MEDIUM] Theme engine
 * [NORMAL] CAP negotiation
 * [LOW] Better input

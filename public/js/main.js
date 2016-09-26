@@ -63,16 +63,6 @@ window.validators.nickname = function(str) {
 	return false;
 }
 
-function remove_str(arr, str) {
-	let index = arr.indexOf(str);
-
-	if(index > -1) {
-		arr.splice(index, 1);
-		return arr;
-	}
-	return arr;
-};
-
 Date.prototype.format = function (format, utc){
 	var date = this;
 	var MMMM = ["\x00", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -209,6 +199,38 @@ if (!String.prototype.format) {
 	};
 }
 
+function remove_str(arr, str) {
+	let index = arr.indexOf(str);
+
+	if(index > -1) {
+		arr.splice(index, 1);
+		return arr;
+	}
+	return arr;
+};
+
+function grep(items, callback) {
+	let filtered = [];
+	for (let i in items) {
+		let item = items[i];
+		let cond = callback(item);
+		if (cond) {
+			filtered.push(item);
+		}
+	}
+
+	return filtered;
+};
+
+function match(word, array) {
+	return grep(
+		array,
+		function(w) {
+			return w.toLowerCase().indexOf(word.toLowerCase()) == 0;
+		}
+	);
+}
+
 function linkify(text) {
 	// see http://daringfireball.net/2010/07/improved_regex_for_matching_urls
 	let re = /\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))/gi;
@@ -325,6 +347,7 @@ class Nicklist {
 	constructor(buffer) {
 		this.buffer = buffer;
 		this.nicks = [];
+		this.simplifiedNicksList = [];
 	}
 
 	sort() {
@@ -371,11 +394,16 @@ class Nicklist {
 	render() {
 		if(!this.buffer.active) return;
 		clientdom.nicklist.innerHTML = "";
+		this.simplifiedNicksList = [];
 		this.sort();
+
 		for(let n in this.nicks) {
 			let nick = this.nicks[n];
+			this.simplifiedNicksList.push(nick.nickname);
 			this.appendToList(nick);
 		}
+
+		irc.chat.input_handler.searchNicknames = this.simplifiedNicksList;
 	}
 
 	nickAdd(nickname) {
@@ -401,6 +429,7 @@ class Nicklist {
 		if(!this.buffer.active) return;
 		let tt = clientdom.nicklist.querySelector('#nick-'+nickname);
 		if(tt) tt.remove();
+		remove_str(this.simplifiedNicksList, nickname);
 	}
 
 	nickChange(oldNickname, newNickname) {
@@ -574,7 +603,7 @@ class Buffer {
 		this.active = false;
 		this.alive = true;
 
-		if(type != "settings") {
+		if(type != "applet") {
 			this.tab = new Tab(this);
 			this.tab.renderTab();
 		}
@@ -677,6 +706,8 @@ class Buffer {
 	}
 
 	switchOff() {
+		irc.chat.input_handler.searchNicknames = [];
+
 		let lFactor = clientdom.letterbox.offsetHeight + clientdom.letterbox.scrollTop
 		if(lFactor > clientdom.letterbox.scrollHeight - 100)
 			this.wasAtBottom = true;
@@ -706,7 +737,7 @@ class Buffer {
 
 class Settings extends Buffer {
 	constructor() {
-		super("", "settings", "Settings", "settings");
+		super("", "settings", "Settings", "applet");
 		this.tab = null;
 		this.isOpen = false;
 		this.timeout = null;
@@ -958,55 +989,137 @@ class InputHandler {
 	constructor() {
 		this.history = [];
 		this.historyCaret = 0;
+		this.searchNicknames = [];
+
+		this.i = -1;
+		this.words = [];
+		this.last = "";
+		this.backspace = false;
 
 		clientdom.input.onkeyup = (evt) => {
 			let key = evt.keyCode || evt.which || evt.charCode || 0;
 			if (key == 13) {
 				this.handleInput();
+				return;
 			}
+
+			this.keyUpHandle(evt, key);
 		}
 
-		clientdom.input.onkeydown = (evt) => {
-			let key = evt.keyCode || evt.which || evt.charCode || 0;
-			if(key == 38) {
-				if(this.historyCaret <= 0) {
-					this.historyCaret = 0;
-				} else {
-					this.historyCaret -= 1;
-				}
-
-				let selection = this.history[this.historyCaret];
-
-				if(selection) {
-					clientdom.input.value = selection;
-					clientdom.input.selectionStart = selection.length;
-					clientdom.input.selectionEnd = selection.length;
-				}
-
-				return false;
-			} else if(key == 40) {
-				if(this.historyCaret >= this.history.length) {
-					this.historyCaret = this.history.length;
-				} else {
-					this.historyCaret += 1;
-				}
-
-				let selection = this.history[this.historyCaret]
-
-				if(!this.history[this.historyCaret])
-					selection = '';
-
-				clientdom.input.selectionStart = selection.length;
-				clientdom.input.selectionEnd = selection.length;
-				clientdom.input.value = selection;
-
-				return false;
+		clientdom.input.onkeydown = (e) => {
+			let key = e.keyCode || e.which || e.charCode || 0;
+			if (e.ctrlKey || e.shiftKey || e.altKey) {
+				return;
 			}
+
+			this.keyDownHandle(e, key);
 		}
 
 		clientdom.send.onclick = (e) => {
 			this.handleInput();
 		}
+	}
+
+	keyUpHandle(e, key) {
+		if(key == 38 || key == 40 || key == 8 || key == 9) return;
+		let input = clientdom.input.value;
+		let word = input.split(/ |\n/).pop();
+
+		// Reset iteration.
+		this.tabCompleteReset();
+
+		// Check for matches if the current word is the last word.
+		if (clientdom.input.selectionStart == input.length && word.length) {
+			// Call the match() function to filter the words.
+			this.tabWords = match(word, this.searchNicknames);
+			for(let n in this.tabWords)
+				this.tabWords[n] += ": ";
+		}
+
+		// Emit the number of matching words with the 'match' event.
+		// self.trigger("match", words.length);
+
+		if (this.backspace) {
+			this.backspace = false;
+		}
+	}
+
+	keyDownHandle(e, key) {
+		if(key == 38) {
+			if(this.historyCaret <= 0) {
+				this.historyCaret = 0;
+			} else {
+				this.historyCaret -= 1;
+			}
+
+			let selection = this.history[this.historyCaret];
+
+			if(selection) {
+				clientdom.input.value = selection;
+				clientdom.input.selectionStart = selection.length;
+				clientdom.input.selectionEnd = selection.length;
+				this.tabCompleteReset();
+			}
+
+			return;
+		} else if(key == 40) {
+			if(this.historyCaret >= this.history.length) {
+				this.historyCaret = this.history.length;
+			} else {
+				this.historyCaret += 1;
+			}
+
+			let selection = this.history[this.historyCaret]
+
+			if(!this.history[this.historyCaret])
+				selection = '';
+
+			clientdom.input.selectionStart = selection.length;
+			clientdom.input.selectionEnd = selection.length;
+			clientdom.input.value = selection;
+			this.tabCompleteReset();
+
+			return;
+		}
+
+		if(key == 9) {
+			e.preventDefault();
+
+			this.index++;
+
+			// Get next match.
+			let word = this.tabWords[this.index % this.tabWords.length];
+			if (!word) {
+				return;
+			}
+
+			let value = clientdom.input.value;
+			this.lastWord = this.lastWord || value.split(/ |\n/).pop();
+
+			// Return if the 'minLength' requirement isn't met.
+			if (this.lastWord.length < 1)
+				return;
+
+			let text = value.substr(0, clientdom.input.selectionStart - this.lastWord.length) + word;
+			clientdom.input.value = text;
+
+			// Remember the word until next time.
+			this.lastWord = word;
+
+			return;
+		} else if(key == 8) {
+			this.index = -1;
+			this.lastWord = "";
+			this.backspace = true;
+
+			return;
+		}
+	}
+
+	tabCompleteReset() {
+		this.index = -1;
+		this.lastWord = "";
+		this.tabWords = [];
 	}
 
 	handleInput() {
@@ -1143,7 +1256,7 @@ class IRCChatWindow {
 		let result = null;
 		for (let t in this.buffers) {
 			let buf = this.buffers[t];
-			if(buf.name == buffername)
+			if(buf.name.toLowerCase() == buffername.toLowerCase())
 				result = buf
 		}
 		return result;
@@ -1183,7 +1296,7 @@ class IRCChatWindow {
 		let result = null;
 		for (let t in this.buffers) {
 			let buf = this.buffers[t];
-			if(buf.server == server && buf.name == channel)
+			if(buf.server == server && buf.name.toLowerCase() == channel.toLowerCase())
 				result = buf;
 		}
 		return result;
@@ -1274,7 +1387,7 @@ class IRCChatWindow {
 		buffer.tab.element.remove();
 		this.buffers.splice(bufIndex, 1);
 
-		if(this.buffers.length == 0) {
+		if(this.buffers.length == 0 || (this.buffers.length == 1 && this.buffers[0].type == "applet")) {
 			irc.chat.destroyAllBuffers();
 			irc.auther.authMessage("Create a new connection", false);
 			irc.auther.canClose = false;
@@ -1458,6 +1571,7 @@ class IRCChatWindow {
 
 	render(buffer) {
 		let activeNow = this.getActiveBuffer();
+		this.input_handler.tabCompleteReset();
 
 		if(activeNow) 
 			activeNow.switchOff();
