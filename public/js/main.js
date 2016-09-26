@@ -63,6 +63,10 @@ window.validators.nickname = function(str) {
 	return false;
 }
 
+window.validators.escapeHTML = function(str) {
+	return str.replace(/\</g, '&lt;').replace(/\>/, '&gt;');
+}
+
 Date.prototype.format = function (format, utc){
 	var date = this;
 	var MMMM = ["\x00", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -147,7 +151,7 @@ irc.whoisMessage = function(whoisData, buffer) {
 	for(let key in whoisData) {
 		switch(key) {
 			case "hostmask":
-				messages.push("<span class='hostmask'>"+whoisData[key]+"</span>: "+whoisData['realname']);
+				messages.push("<span class='hostmask'>"+whoisData[key]+"</span>: "+validators.escapeHTML(whoisData['realname']));
 				break;
 			case "idleSeconds":
 				let msgs = "is idle for "+whoisData[key]+" seconds";
@@ -160,7 +164,7 @@ irc.whoisMessage = function(whoisData, buffer) {
 			case "connectingFrom":
 			case "usingModes":
 			case "title":
-				messages.push(whoisData[key]);
+				messages.push(validators.escapeHTML(whoisData[key]));
 				break;
 			case "channels":
 				messages.push(whoisData[key].join(" "));
@@ -168,7 +172,7 @@ irc.whoisMessage = function(whoisData, buffer) {
 			case "server":
 				let adfd = "is on <span class='server nick'>"+whoisData[key]+"</span>";
 				if(whoisData['server_name'])
-					adfd += "&nbsp;<span class='hostmask'>"+whoisData['server_name']+"</span>";
+					adfd += "&nbsp;<span class='hostmask'>"+validators.escapeHTML(whoisData['server_name'])+"</span>";
 				messages.push(adfd);
 				break;
 			case "secure":
@@ -240,7 +244,7 @@ function linkify(text) {
 		if (url.indexOf('http') !== 0) {
 			href = 'http://' + url;
 		}
-		return '<a href="' + href + '" target="_blank">' + url + '</a>';
+		return '<a href="' + href + '" target="_blank" rel="nofollow">' + url + '</a>';
 	});
 	return parsed;
 }
@@ -335,6 +339,125 @@ let composer = {
 			return element;
 		}
 	}
+}
+
+/*****************************\
+|**                         **|
+|**     CLIENT COMMANDS     **|
+|**                         **|
+\*****************************/
+
+// commandName: {execute: function(buffer, handler, command, message, listargs) {}, description: ""}
+let commands = {
+	join: {execute: function(buffer, handler, command, message, listargs) {
+		if (!listargs[1]) {
+			if(!buffer.alive) {
+				irc.socket.emit("userinput", {command: "join", server: buffer.server, message: "", arguments: [buffer.name]});
+			} else {
+				handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+			}
+		} else {
+			irc.socket.emit("userinput", {command: "join", server: buffer.server, message: "", arguments: [listargs[1]]});
+		}
+	}, description: "<channel> - Join a channel"}, 
+
+	part: {execute: function(buffer, handler, command, message, listargs) {
+		if (!listargs[1] && buffer.type == "channel") {
+			irc.socket.emit("userinput", {command: "part", server: buffer.server, message: "", arguments: [buffer.name]});
+		} else if(buffer.type != "channel") {
+			handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel.');
+		} else if(listargs[1]) {
+			if(listargs[1].indexOf('#')) {
+				let msg = "";
+				if(listargs[2])
+					msg = listargs.slice(2).join(" ");
+				irc.socket.emit("userinput", {command: "part", server: buffer.server, message: msg, arguments: [listargs[1]]});
+			} else {
+				if(buffer.type == "channel") {
+					irc.socket.emit("userinput", {command: "part", server: buffer.server, message: listargs.slice(1).join(" "), arguments: [buffer.name]});
+				} else {
+					handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel.');
+				}
+			}
+		}
+	}, description: "[<#channel>|<message>] [message] - Leave the channel. If no channel specified, leave the current buffer.", aliases: ['leave']},
+
+	quit: {execute: function(buffer, handler, command, message, listargs) {
+		irc.socket.emit("userinput", {command: "quit", server: buffer.server, message: listargs.slice(1).join(" "), arguments: []});
+	}, description: "[<message>] - Quit the current server with message.", aliases: ['exit']},
+
+	privmsg: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1] || !listargs[2])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+		if(listargs[1] == '*')
+			listargs[1] = buffer.name;
+		irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
+	}, description: "<target> <message> - Sends a message to target.", aliases: ['msg', 'q', 'query', 'say']},
+
+	notice: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1] || !listargs[2])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+		if(listargs[1] == '*')
+			listargs[1] = buffer.name;
+		irc.socket.emit("userinput", {command: "notice", server: buffer.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
+	}, description: "<target> <message> - Sends a NOTICE to target."},
+
+	action: {execute: function(buffer, handler, command, message, listargs) {
+		irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: "\x01ACTION "+message.substring(command.length+2)+"\x01", arguments: [buffer.name]});
+	}, description: "<message> - 'act' as yourself"},
+
+	list: {execute: function(buffer, handler, command, message, listargs) {
+		irc.socket.emit("userinput", {command: "list", server: buffer.server, message: "", arguments: listargs.splice(1)});
+	}, description: "- List all channels on the current server."},
+
+	quote: {execute: function(buffer, handler, command, message, listargs) {
+		irc.socket.emit("userinput", {command: listargs[1], server: buffer.server, message: listargs.slice(2).join(" "), arguments: listargs.splice(2)});
+	}, description: "<command> [args] - Send a raw command to the server.", aliases: ['raw']},
+
+	whois: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+
+		irc.socket.emit("userinput", {command: "whois", server: buffer.server, message: "", arguments: [listargs[1]]});
+	}, description: "<nickname> - Display information about a user."},
+
+	connect: {execute: function(buffer, handler, command, message, listargs) {
+		clientdom.connector.frame.style.display = "block";
+		irc.auther.authMessage("Create a new connection", false);
+		irc.auther.canClose = true;
+	}, description: "- Create a new connection."},
+
+	help: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+
+		let cmd = listargs[1].toLowerCase();
+		if(cmd.indexOf('/') === 0)
+			cmd = cmd.substring(1);
+
+		if(cmd in commands) {
+			if("description" in commands[cmd])
+				buffer.addMessage("<span class='command'>/"+cmd.toUpperCase()+"</span>&nbsp;"+
+					validators.escapeHTML(commands[cmd].description), null, "help");
+			else
+				buffer.addMessage("<span class='command'>/"+cmd.toUpperCase()+"</span> - No description provided", null, "help");
+		} else {
+			let foundAliased = null;
+			for(let cmd2 in commands) {
+				if(!commands[cmd2]['aliases']) continue;
+				if(commands[cmd2].aliases.indexOf(cmd) != -1) foundAliased = cmd2;
+			}
+			if(foundAliased) {
+				if("description" in commands[foundAliased])
+					buffer.addMessage("<span class='command'>/"+cmd.toUpperCase()+"</span>&nbsp;"+
+						validators.escapeHTML(commands[foundAliased].description), null, "help");
+				else
+					buffer.addMessage("<span class='command'>/"+cmd.toUpperCase()+"</span> - No description provided", null, "help");
+			} else {
+				handler.commandError(buffer, '/'+cmd.toUpperCase()+': Unknown command!');
+			}
+		}
+	}, description: "<command> - Display help for command"}
 }
 
 /*********************\
@@ -1123,98 +1246,37 @@ class InputHandler {
 	}
 
 	handleInput() {
-		let inp = clientdom.input.value;
-		let buf = irc.chat.getActiveBuffer();
+		let message = clientdom.input.value;
+		let buffer = irc.chat.getActiveBuffer();
 
-		if(!buf) return;
-		if(inp.trim() == "") return;
+		if(!buffer) return;
+		if(message.trim() == "") return;
 
-		let listargs = inp.split(' ');
+		let listargs = message.split(' ');
 
 		if(listargs[0].indexOf('/') == 0) {
-			let cmd = listargs[0].substring(1).toLowerCase();
-			switch(cmd) {
-				case "join":
-					if (!listargs[1]) {
-						if(!buf.alive) {
-							irc.socket.emit("userinput", {command: "join", server: buf.server, message: "", arguments: [buf.name]});
-						} else {
-							this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
-						}
-					} else {
-						irc.socket.emit("userinput", {command: "join", server: buf.server, message: "", arguments: [listargs[1]]});
-					}
-					break;
-				case "part":
-					if (!listargs[1] && buf.type == "channel") {
-						irc.socket.emit("userinput", {command: "part", server: buf.server, message: "", arguments: [buf.name]});
-					} else if(buf.type != "channel") {
-						this.commandError(buf, listargs[0].toUpperCase()+': Buffer is not a channel.');
-					} else if(listargs[1]) {
-						if(listargs[1].indexOf('#')) {
-							let msg = "";
-							if(listargs[2])
-								msg = listargs.slice(2).join(" ");
-							irc.socket.emit("userinput", {command: "part", server: buf.server, message: msg, arguments: [listargs[1]]});
-						} else {
-							if(buf.type == "channel") {
-								irc.socket.emit("userinput", {command: "part", server: buf.server, message: listargs.slice(1).join(" "), arguments: [buf.name]});
-							} else {
-								this.commandError(buf, listargs[0].toUpperCase()+': Buffer is not a channel.');
-							}
-						}
-					}
-					break;
-				case "quit":
-					irc.socket.emit("userinput", {command: "quit", server: buf.server, message: listargs.slice(1).join(" "), arguments: []});
-					break;
-				case "msg":
-				case "privmsg":
-				case "say":
-					if(!listargs[1] || !listargs[2])
-						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
-					if(listargs[1] == '*')
-						listargs[1] = buf.name;
-					irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
-					break;
-				case "notice":
-					if(!listargs[1] || !listargs[2])
-						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
-					if(listargs[1] == '*')
-						listargs[1] = buf.name;
-					irc.socket.emit("userinput", {command: "notice", server: buf.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
-					break;
-				case "me":
-				case "action":
-					irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: "\x01ACTION "+inp.substring(cmd.length+2)+"\x01", arguments: [buf.name]});
-					break;
-				case "nick":
-				case "list":
-					irc.socket.emit("userinput", {command: cmd, server: buf.server, message: "", arguments: listargs.splice(1)});
-					break;
-				case "quote":
-				case "raw":
-					irc.socket.emit("userinput", {command: listargs[1], server: buf.server, message: listargs.slice(2).join(" "), arguments: listargs.splice(2)});
-					break;
-				case "whois":
-					if(!listargs[1])
-						return this.commandError(buf, listargs[0].toUpperCase()+': Missing parameters!');
-
-					irc.socket.emit("userinput", {command: "whois", server: buf.server, message: "", arguments: [listargs[1]]});
-					break;
-				case "connect":
-					clientdom.connector.frame.style.display = "block";
-					irc.auther.authMessage("Create a new connection", false);
-					irc.auther.canClose = true;
-					break;
-				default:
-					this.commandError(buf, listargs[0].toUpperCase()+': Unknown command!');
+			let command = listargs[0].substring(1).toLowerCase();
+			if(command.toLowerCase() in commands) {
+				let cmd = commands[command];
+				if("execute" in cmd)
+					cmd.execute(buffer, this, command, message, listargs);
+			} else {
+				let foundAliased = null;
+				for(let cmd in commands) {
+					if(!commands[cmd]['aliases']) continue;
+					if(commands[cmd].aliases.indexOf(command) != -1) foundAliased = commands[cmd];
+				}
+				if(foundAliased)
+					foundAliased.execute(buffer, this, command, message, listargs);
+				else
+					this.commandError(buffer, listargs[0].toUpperCase()+': Unknown command!');
 			}
+
 		} else {
-			irc.socket.emit("userinput", {command: "privmsg", server: buf.server, message: inp, arguments: [buf.name]});
+			irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: message, arguments: [buffer.name]});
 		}
 
-		this.history.push(inp);
+		this.history.push(message);
 		this.historyCaret = this.history.length;
 		clientdom.input.value = "";
 	}
@@ -1654,6 +1716,11 @@ window.onload = function() {
 
 	// Does everything
 	irc.socket.on('act_client', function (data) {
+		if(data['message'])
+			data.message = validators.escapeHTML(data.message);
+		if(data['reason'])
+			data.reason = validators.escapeHTML(data.reason);
+		
 		switch(data.type) {
 			case "event_connect":
 				irc.auther.authComplete();

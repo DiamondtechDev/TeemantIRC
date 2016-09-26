@@ -486,6 +486,10 @@ body {
   color: #f00;
   font-weight: bold;
 }
+.message.m_help .content {
+  color: #008000;
+  font-weight: bold;
+}
 .message .irc-bg00,
 .topicbar .irc-bg00,
 .message .irc-bg0,
