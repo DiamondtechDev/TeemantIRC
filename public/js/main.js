@@ -949,6 +949,11 @@ class Settings extends Buffer {
 		}
 	}
 
+	addMessage(message, sender, type, time) {
+		// Don't send messages to the settings buffer
+		return;
+	}
+
 	switchOff() {
 		this.active = false;
 		this.tab.setActive(false);
@@ -1019,6 +1024,7 @@ class IRCConnector {
 		}
 		if(window.location.hash)
 			clientdom.connector.channel.value = window.location.hash;
+		
 		if(window.location.pathname.length > 4) {
 			let t1 = window.location.pathname.substring(1, window.location.pathname.length-1);
 			let proposed = "";
@@ -1158,9 +1164,6 @@ class InputHandler {
 			for(let n in this.tabWords)
 				this.tabWords[n] += ": ";
 		}
-
-		// Emit the number of matching words with the 'match' event.
-		// self.trigger("match", words.length);
 
 		if (this.backspace) {
 			this.backspace = false;
