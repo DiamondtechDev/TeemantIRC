@@ -455,7 +455,8 @@ body {
 .message.m_join {
   color: #008000;
 }
-.message.m_topic .content {
+.message.m_topic .content,
+.message.m_names .content {
   color: #03a9f4;
   font-weight: bold;
 }

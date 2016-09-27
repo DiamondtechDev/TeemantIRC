@@ -367,7 +367,7 @@ let commands = {
 		} else if(buffer.type != "channel") {
 			handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel.');
 		} else if(listargs[1]) {
-			if(listargs[1].indexOf('#')) {
+			if(listargs[1].indexOf('#') != -1) {
 				let msg = "";
 				if(listargs[2])
 					msg = listargs.slice(2).join(" ");
@@ -382,17 +382,46 @@ let commands = {
 		}
 	}, description: "[<#channel>|<message>] [message] - Leave the channel. If no channel specified, leave the current buffer.", aliases: ['leave']},
 
+	topic: {execute: function(buffer, handler, command, message, listargs) {
+		if (!listargs[1] && buffer.type == "channel") {
+			irc.socket.emit("userinput", {command: "topic", server: buffer.server, message: "", arguments: [buffer.name]});
+		} else if(buffer.type != "channel") {
+			handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel.');
+		} else if(listargs[1]) {
+			if(listargs[1].indexOf('#') != -1) {
+				let msg = "";
+				if(listargs[2])
+					msg = listargs.slice(2).join(" ");
+				irc.socket.emit("userinput", {command: "topic", server: buffer.server, message: msg, arguments: [listargs[1]]});
+			} else {
+				if(buffer.type == "channel") {
+					irc.socket.emit("userinput", {command: "topic", server: buffer.server, message: listargs.slice(1).join(" "), arguments: [buffer.name]});
+				} else {
+					handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel.');
+				}
+			}
+		}
+	}, description: "[<#channel>|<topic>] [topic] - Sets/prints the current topic of the channel.", aliases: ['t']},
+
+	kick: {execute: function(buffer, handler, command, message, listargs) {
+		if(buffer.type != "channel")
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Buffer is not a channel!');
+		if(!listargs[1])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameter <user>!');
+		irc.socket.emit("userinput", {command: "kick", server: buffer.server, message: listargs.slice(2).join(" "), arguments: [buffer.name, listargs[1]]});
+	}, description: "<user> <message> - Kick the following user from the channel."},
+
 	quit: {execute: function(buffer, handler, command, message, listargs) {
 		irc.socket.emit("userinput", {command: "quit", server: buffer.server, message: listargs.slice(1).join(" "), arguments: []});
 	}, description: "[<message>] - Quit the current server with message.", aliases: ['exit']},
 
-	privmsg: {execute: function(buffer, handler, command, message, listargs) {
+	msg: {execute: function(buffer, handler, command, message, listargs) {
 		if(!listargs[1] || !listargs[2])
 			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
 		if(listargs[1] == '*')
 			listargs[1] = buffer.name;
 		irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
-	}, description: "<target> <message> - Sends a message to target.", aliases: ['msg', 'q', 'query', 'say']},
+	}, description: "<target> <message> - Sends a message to target.", aliases: ['privmsg', 'q', 'query', 'say']},
 
 	notice: {execute: function(buffer, handler, command, message, listargs) {
 		if(!listargs[1] || !listargs[2])
@@ -409,6 +438,32 @@ let commands = {
 	list: {execute: function(buffer, handler, command, message, listargs) {
 		irc.socket.emit("userinput", {command: "list", server: buffer.server, message: "", arguments: listargs.splice(1)});
 	}, description: "- List all channels on the current server."},
+
+	nick: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1]) {
+			if(buffer.server != '') {
+				let mynick = irc.serverData[buffer.server].my_nick;
+				buffer.addMessage("Your nickname is: <span class='nick'>"+mynick+"</span>", null, "help");
+			}
+			return;
+		}
+		irc.socket.emit("userinput", {command: "nick", server: buffer.server, message: "", arguments: listargs.splice(1)});
+	}, description: "- List all channels on the current server.", aliases: ['nickname']},
+
+	names: {execute: function(buffer, handler, command, message, listargs) {
+		let channel = "";
+		if(!listargs[1]) {
+			if(buffer.type == 'channel')
+				channel = buffer.name;
+			else
+				return handler.commandError(buffer, '/'+cmd.toUpperCase()+': Buffer is not a channel!');
+		} else if(listargs[1].indexOf('#') == 0) {
+			channel = listargs[1];
+		} else {
+			return handler.commandError(buffer, '/'+cmd.toUpperCase()+': Invalid channel name!');
+		}
+		irc.socket.emit("userinput", {command: "names", server: buffer.server, message: "", arguments: [channel]});
+	}, description: "- List all users on the current channel.", aliases: ['nicknames']},
 
 	quote: {execute: function(buffer, handler, command, message, listargs) {
 		irc.socket.emit("userinput", {command: listargs[1], server: buffer.server, message: listargs.slice(2).join(" "), arguments: listargs.splice(2)});
@@ -457,7 +512,11 @@ let commands = {
 				handler.commandError(buffer, '/'+cmd.toUpperCase()+': Unknown command!');
 			}
 		}
-	}, description: "<command> - Display help for command"}
+	}, description: "<command> - Display help for command"},
+
+	clear: {execute: function(buffer, handler, command, message, listargs) {
+		buffer.clearMessages();
+	}, description: "- Clears the current buffer."}
 }
 
 /*********************\
@@ -781,12 +840,20 @@ class Buffer {
 		}
 	}
 
+	clearMessages() {
+		this.messages = [];
+
+		if(this.active)
+			clientdom.letterbox.innerHTML = "";
+	}
+
 	appendMessage(meta) {
 		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type);
 
 		if(irc.serverData[this.server]) {
+			let mynick = irc.serverData[this.server].my_nick;
 			if((meta.type == "privmsg" || meta.type == "notice" || meta.type == "action") && 
-				meta.message.indexOf(irc.serverData[this.server].my_nick) != -1)
+				meta.message.toLowerCase().indexOf(mynick.toLowerCase()) != -1 && meta.sender != mynick)
 				addClass(mesgConstr, "mentioned");
 		}
 
@@ -819,8 +886,9 @@ class Buffer {
 		} else {
 			this.unreadCount += 1;
 			if(irc.serverData[this.server]) {
+				let mynick = irc.serverData[this.server].my_nick;
 				if((type == "privmsg" || type == "notice" || type == "action") && 
-					message.indexOf(irc.serverData[this.server].my_nick) != -1)
+					message.toLowerCase().indexOf(mynick.toLowerCase()) != -1 && sender != mynick)
 					console.log("TODO: notify user of mentioned");
 			}
 		}
@@ -1120,10 +1188,9 @@ class InputHandler {
 		this.historyCaret = 0;
 		this.searchNicknames = [];
 
-		this.i = -1;
+		this.index = -1;
 		this.words = [];
 		this.last = "";
-		this.backspace = false;
 
 		clientdom.input.onkeyup = (evt) => {
 			let key = evt.keyCode || evt.which || evt.charCode || 0;
@@ -1161,12 +1228,9 @@ class InputHandler {
 		if (clientdom.input.selectionStart == input.length && word.length) {
 			// Call the match() function to filter the words.
 			this.tabWords = match(word, this.searchNicknames);
-			for(let n in this.tabWords)
-				this.tabWords[n] += ": ";
-		}
-
-		if (this.backspace) {
-			this.backspace = false;
+			if(input.indexOf(word) == 0)
+				for(let n in this.tabWords)
+					this.tabWords[n] += ": ";
 		}
 	}
 
@@ -1236,8 +1300,7 @@ class InputHandler {
 		} else if(key == 8) {
 			this.index = -1;
 			this.lastWord = "";
-			this.backspace = true;
-
+			
 			return;
 		}
 	}
@@ -1480,6 +1543,8 @@ class IRCChatWindow {
 		if(buf == null)
 			return;
 
+		let channelSendNicks = [];
+
 		for(let n in nicks) {
 			let nick = {nickname: "", prefix: "", modes: []};
 
@@ -1487,12 +1552,16 @@ class IRCChatWindow {
 				nick.prefix = nicks[n].substring(0, 1);
 				nick.nickname = nicks[n].substring(1);
 				nick.modes = [objectGetKey(irc.serverData[buf.server].modeTranslation, nick.prefix)];
+				channelSendNicks.push("<span class='prefix'>{0}</span><span class='nick'>{1}</span>".format(nick.prefix, nick.nickname));
 			} else {
 				nick.nickname = nicks[n];
+				channelSendNicks.push("<span class='nick'>{1}</span>".format(nick.prefix, nick.nickname));
 			}
 
 			buf.nicklist.nickAddObject(nick);
 		}
+
+		buf.addMessage("Nicks <span class='channel'>{0}</span>: {1}".format(channel, channelSendNicks.join(', ')), null, "names");
 
 		if(buf.active)
 			buf.nicklist.render();
@@ -1518,7 +1587,7 @@ class IRCChatWindow {
 			if(buffer.nicklist.getNickIndex(oldNick) == null) continue;
 
 			buffer.nicklist.nickChange(oldNick, newNick);
-			buffer.addMessage(oldNick+" is now known as "+newNick, null, "nick");
+			buffer.addMessage("{0} is now known as {1}".format(oldNick, newNick), null, "nick");
 		}
 	}
 
@@ -1529,9 +1598,10 @@ class IRCChatWindow {
 
 		buf.topicChange(topic);
 		if(changer)
-			buf.addMessage(changer+" set the topic of "+channel+ " to \""+topic+"\"", null, "topic");
+			buf.addMessage("<span class='nick'>{0}</span> has changed the topic of {1} to \"{2}\"".format(changer, channel, topic), 
+				null, "topic");
 		else
-			buf.addMessage("Topic of "+channel+ " is \""+topic+"\"", null, "topic");
+			buf.addMessage("Topic of <span class='channel'>{0}</span> is \"{1}\"".format(channel, topic), null, "topic");
 	}
 
 	handleQuit(server, user, reason) {
@@ -1544,8 +1614,8 @@ class IRCChatWindow {
 			if(buffer.nicklist.getNickIndex(user.nickname) == null) continue;
 
 			buffer.nicklist.nickRemove(user.nickname);
-			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+
-							  "</span> has quit <span class='reason'>"+reason+"</span>", user.nickname, "quit");
+			buffer.addMessage("<span class='hostmask'>{0}@{1}</span> has quit <span class='reason'>{2}</span>".format(user.username, 
+				user.hostname, reason), user.nickname, "quit");
 		}
 	}
 
@@ -1557,7 +1627,8 @@ class IRCChatWindow {
 		if(user.nickname == irc.serverData[server].my_nick)
 			buffer.setAliveStatus(true);
 
-		buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has joined "+channel, user.nickname, "join");
+		buffer.addMessage("<span class='hostmask'>{0}@{1}</span> has joined <span class='channel'>{2}</span>".format(user.username, 
+				user.hostname, channel), user.nickname, "join");
 		buffer.nicklist.nickAdd(user.nickname);
 	}
 
@@ -1575,10 +1646,10 @@ class IRCChatWindow {
 		}
 
 		if(kicker)
-			buffer.addMessage("has kicked <span class='nick'>"+user+"</span> <span class='reason'>"+reason+"</span>", kicker.nickname, "part");
+			buffer.addMessage("has kicked <span class='nick'>{0}</span> <span class='reason'>{1}</span>".format(user, reason), kicker.nickname, "part");
 		else
-			buffer.addMessage("<span class='hostmask'>"+user.username+"@"+user.hostname+"</span> has left "+
-								channel+(reason != null ? "&nbsp;<span class='reason'>"+reason+"</span>" : ""), user.nickname, "part");
+			buffer.addMessage("<span class='hostmask'>{0}@{1}</span> has left <span class='channel'>{2}</span>{3}".format(user.username, 
+				user.hostname, (reason != null ? "&nbsp;<span class='reason'>"+reason+"</span>" : "")), user.nickname, "part");
 		if(kicker)
 			buffer.nicklist.nickRemove(user);
 		else
@@ -1596,15 +1667,15 @@ class IRCChatWindow {
 
 		if(data.type == "mode_add") {
 			buf.nicklist.modeAdded(data.modeTarget, data.mode);
-			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>+"+data.mode+" "+
-							data.modeTarget+"</span>", data.user.nickname, "mode");
+			buf.addMessage("set mode <span class='channel'>{0}</span> <span class='mode'>+{1} {2}</span>".format(data.target,
+							data.mode, data.modeTarget), data.user.nickname, "mode");
 		} else if(data.type == "mode_del") {
 			buf.nicklist.modeRemoved(data.modeTarget, data.mode);
-			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>-"+data.mode+" "+
-							data.modeTarget+"</span>", data.user.nickname, "mode");
+			buf.addMessage("set mode <span class='channel'>{0}</span> <span class='mode'>-{1} {2}</span>".format(data.target,
+							data.mode, data.modeTarget), data.user.nickname, "mode");
 		} else {
-			buf.addMessage("set mode <span class='channel'>"+data.target+"</span> <span class='mode'>"+data.message+"</span>", 
-							data.user.nickname, "mode");
+			buf.addMessage("set mode <span class='channel'>{0}</span> <span class='mode'>{1}</span>".format(data.target,
+							data.message), data.user.nickname, "mode");
 		}
 	}
 

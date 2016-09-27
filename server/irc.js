@@ -21,13 +21,19 @@ class IRCConnectionHandler {
 
 	handleUserLine(data) {
 		switch(data.command) {
+			case "topic":
+				this.conn.write(('{0} {1}'+(data.message != '' ? ' :'+data.message : '')).format(data.command.toUpperCase(), data.arguments[0]));
+				break;
 			case "kick":
+				this.conn.write('{0} {1} :{2}'.format(data.command.toUpperCase(), data.arguments.join(' '), data.message));
+				break;
 			case "part":
 				this.conn.write('{0} {1} :{2}'.format(data.command.toUpperCase(), data.arguments[0], data.message));
 				break;
 			case "nick":
 			case "whois":
 			case "who":
+			case "names":
 			case "join":
 				this.conn.write('{0} {1}'.format(data.command.toUpperCase(), data.arguments[0]));
 				break;
@@ -214,6 +220,15 @@ class IRCConnectionHandler {
 			case "042":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.arguments[1] +" "+ line.trailing, server: serverName, from: realServerName});
 				break;
+			case "401":
+			case "402":
+			case "421":
+			case "482":
+			case "331":
+			case "432":
+				this.conn.emit('pass_to_client', {type: "message", to: null, message: line.arguments[1]+': '+line.trailing, 
+								server: serverName, user: {nickname: realServerName}, messageType: "error"});
+				break;
 			case "MODE":
 				let isChannelMode = false;
 				let method = '+';
@@ -246,13 +261,6 @@ class IRCConnectionHandler {
 				let newNick = this.conn.config.nickname + "_";
 				this.conn.write('NICK '+newNick);
 				this.conn.config.nickname = newNick;
-				break;
-			case "401":
-			case "402":
-			case "421":
-			case "432":
-				this.conn.emit('pass_to_client', {type: "message", to: null, message: line.arguments[1]+': '+line.trailing, 
-								server: serverName, user: {nickname: realServerName}, messageType: "error"});
 				break;
 			case "311":
 				// start whois queue
