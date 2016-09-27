@@ -285,7 +285,7 @@ body {
   cursor: pointer;
 }
 .ircclient #chat .ircwrapper .chatarea .nicklist .nick:hover {
-  background-color: #b1ffc2;
+  background-color: #aeebff;
 }
 .ircclient #chat .ircwrapper .chatarea .nicklist .nick .nickname {
   font-size: 120%;
@@ -388,7 +388,7 @@ body {
   cursor: pointer;
 }
 .message.type_simple.mentioned {
-  background-color: #d4ffd4;
+  background-color: #aeebff;
 }
 .message.type_simple .timestamp {
   color: #696969;

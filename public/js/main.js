@@ -12,6 +12,7 @@ window.irc = {
 	serverData: {},
 	serverChatQueue: {},
 	chatType: "simple",
+	documentTitle: "TeemantIRC"
 };
 
 window.clientdom = {connector: {}, settings: {}};
@@ -831,6 +832,8 @@ class Buffer {
 			clientdom.letterbox.scrollTop = this.lastscroll;
 
 		clientdom.currentNickname.innerHTML = irc.serverData[this.server].my_nick;
+
+		irc.chat.changeTitle("TeemantIRC - "+this.title);
 	}
 
 	renderMessages() {
@@ -1040,6 +1043,7 @@ class Settings extends Buffer {
 		clientdom.topicbar.innerHTML = "";
 		clientdom.letterbox.innerHTML = "";
 		clientdom.settings.frame.style.display = "block";
+		irc.chat.changeTitle("TeemantIRC - Settings");
 	}
 }
 
@@ -1084,6 +1088,12 @@ class IRCConnector {
 				case "ssl":
 					if(value == "true" || value == "1")
 						clientdom.connector.secure.checked = true;
+					break;
+				case "password":
+					if(value == "true" || value == "1") {
+						clientdom.connector.pwtrigger.checked = true;
+						this.togglePassword();
+					}
 					break;
 				case "server":
 				case "host":
@@ -1717,6 +1727,12 @@ class IRCChatWindow {
 		}
 
 		irc.socket.emit("userinput", {command: "join", server: server, message: "", arguments: channel});
+	}
+
+	changeTitle(title) {
+		// TODO: notify of hot buffers
+		document.title = title;
+		irc.documentTitle = title;
 	}
 
 	render(buffer) {
