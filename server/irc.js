@@ -220,6 +220,7 @@ class IRCConnectionHandler {
 			case "042":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.arguments[1] +" "+ line.trailing, server: serverName, from: realServerName});
 				break;
+			case "501":
 			case "401":
 			case "402":
 			case "421":

@@ -64,8 +64,15 @@ body {
   margin-top: 5px;
   color: #2196f3;
 }
+.ircclient .coverwindow .wrapper label.autosize {
+  width: auto;
+  display: inline-block !important;
+  font-size: 90% !important;
+  margin-bottom: 10px;
+}
 .ircclient .coverwindow .wrapper input[type=text],
-.ircclient .coverwindow .wrapper input[type=number] {
+.ircclient .coverwindow .wrapper input[type=number],
+.ircclient .coverwindow .wrapper input[type=password] {
   padding: 8px;
   width: 300px;
   border-radius: 5px;

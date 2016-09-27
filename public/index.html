@@ -25,14 +25,22 @@
 					<form action="" id="IRCConnector">
 						<label for="nickname">Nickname</label>
 						<input type="text" name="nickname" id="nickname" value="">
+						<label class="autosize" for="password_trig">I have a password</label>&nbsp;
+						<input type="checkbox" name="password_trig" id="password_trig">
+						<div class="password_box" style="display: none;">
+							<label for="password">Password</label>
+							<input type="password" name="password" id="password">
+						</div>
 						<label for="channel">Channel</label>
 						<input type="text" name="channel" id="channel" value="#diamond">
-						<label for="server">Server</label>
-						<input type="text" name="server" id="server" value="irc.icynet.ml">
-						<label for="port">Port</label>
-						<input type="number" name="port" id="port" value="6667">
-						<label for="secure">Secure connection</label>
-						Use SSL <input type="checkbox" name="secure" id="secure">
+						<div class="server_data">
+							<label for="server">Server</label>
+							<input type="text" name="server" id="server" value="irc.icynet.ml">
+							<label for="port">Port</label>
+							<input type="number" name="port" id="port" value="6667">
+							<label for="secure">Secure connection</label>
+							Use SSL <input type="checkbox" name="secure" id="secure">
+						</div>
 						<input type="submit" value="Connect">
 					</form>
 				</div>

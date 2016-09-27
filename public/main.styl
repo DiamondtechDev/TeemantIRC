@@ -75,7 +75,12 @@ body
                 font-size: 80%
                 margin-top: 5px
                 color: #2196F3
-            input[type=text], input[type=number]
+                &.autosize
+                    width: auto
+                    display: inline-block !important
+                    font-size: 90% !important
+                    margin-bottom: 10px
+            input[type=text], input[type=number], input[type=password]
                 padding: 8px;
                 width: 300px;
                 border-radius: 5px;

@@ -54,7 +54,7 @@ io.sockets.on('connection', function (socket) {
 	connections[socket.id] = {
 		host: {
 			ipaddr: userip,
-			hostname: "localhost"
+			hostname: userip
 		}
 	}
 
@@ -63,9 +63,10 @@ io.sockets.on('connection', function (socket) {
 	hostQuery.then((arr) => {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
-		if(config.server.debug)
-			console.log("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
 	}).catch((err) => { console.log("Host resolve for "+socket.id+" failed: ", err); });
+
+	if(config.server.debug)
+		console.log("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
 
 	socket.on('disconnect', function() {
 		for (let d in connections[socket.id]) {

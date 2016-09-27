@@ -415,6 +415,10 @@ let commands = {
 		irc.socket.emit("userinput", {command: "quit", server: buffer.server, message: listargs.slice(1).join(" "), arguments: []});
 	}, description: "[<message>] - Quit the current server with message.", aliases: ['exit']},
 
+	mode: {execute: function(buffer, handler, command, message, listargs) {
+		irc.socket.emit("userinput", {command: "mode", server: buffer.server, message: listargs.slice(1).join(" "), arguments: []});
+	}, description: "[target] [mode] - Set/remove mode of target."},
+
 	msg: {execute: function(buffer, handler, command, message, listargs) {
 		if(!listargs[1] || !listargs[2])
 			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
@@ -1060,6 +1064,10 @@ class IRCConnector {
 			if(key === 27 && this.canClose)
 				this.authComplete();
 		}
+
+		clientdom.connector.pwtrigger.onclick = (e) => {
+			this.togglePassword();
+		} 
 	}
 
 	fillFormFromURI() {
@@ -1113,6 +1121,7 @@ class IRCConnector {
 		event.preventDefault();
 
 		let nickname = clientdom.connector.nickname.value;
+		let password = clientdom.connector.password.value;
 		let channel = clientdom.connector.channel.value;
 		let server = clientdom.connector.server.value;
 		let port = clientdom.connector.port.value;
@@ -1161,11 +1170,14 @@ class IRCConnector {
 			return false;
 		}
 
+		if(!clientdom.connector.pwtrigger.checked)
+			password = "";
+
 		irc.socket.emit('irc_create', {nickname: 	nickname,
 									   autojoin: 	channel,
 									   server: 		server,
 									   port: 		port,
-									   password: 	null,
+									   password: 	password,
 									   secure: 		clientdom.connector.secure.checked });
 		return true;
 	}
@@ -1174,6 +1186,13 @@ class IRCConnector {
 		clientdom.connector.messenger.innerHTML = "<span class='msg"+(error?" error":"")+"'>"+message+"</span>";
 		if(error)
 			this.formLocked = false;
+	}
+
+	togglePassword() {
+		if(clientdom.connector.pwtrigger.checked)
+			clientdom.connector.pwbox.style.display = "block";
+		else
+			clientdom.connector.pwbox.style.display = "none";
 	}
 
 	authComplete() {
@@ -1217,7 +1236,7 @@ class InputHandler {
 	}
 
 	keyUpHandle(e, key) {
-		if(key == 38 || key == 40 || key == 8 || key == 9) return;
+		if(key == 38 || key == 40 || key == 9) return;
 		let input = clientdom.input.value;
 		let word = input.split(/ |\n/).pop();
 
@@ -1296,11 +1315,6 @@ class InputHandler {
 			// Remember the word until next time.
 			this.lastWord = word;
 
-			return;
-		} else if(key == 8) {
-			this.index = -1;
-			this.lastWord = "";
-			
 			return;
 		}
 	}
@@ -1753,6 +1767,9 @@ window.onload = function() {
 	clientdom.connector['messenger'] = clientdom.connector.frame.querySelector('#connmsg');
 	clientdom.connector['form'] = clientdom.connector.frame.querySelector('#IRCConnector');
 	clientdom.connector['nickname'] = clientdom.connector.form.querySelector('#nickname');
+	clientdom.connector['password'] = clientdom.connector.form.querySelector('#password');
+	clientdom.connector['pwtrigger'] = clientdom.connector.form.querySelector('#password_trig');
+	clientdom.connector['pwbox'] = clientdom.connector.form.querySelector('.password_box');
 	clientdom.connector['channel'] = clientdom.connector.form.querySelector('#channel');
 	clientdom.connector['server'] = clientdom.connector.form.querySelector('#server');
 	clientdom.connector['port'] = clientdom.connector.form.querySelector('#port');
