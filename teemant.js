@@ -47,6 +47,9 @@ io.sockets.on('connection', function (socket) {
 	let userip = socket.handshake.headers['x-real-ip'] || socket.handshake.headers['x-forwarded-for'] || 
 				 socket.request.connection._peername.address || "127.0.0.1";
 
+	if(userip.indexOf('::ffff:') == 0)
+		userip = userip.substring(7);
+
 	if(config.server.debug)
 		console.log('clientID: '+socket.id+' from: ', userip);
 
