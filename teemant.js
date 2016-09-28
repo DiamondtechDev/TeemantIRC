@@ -40,11 +40,11 @@ function printRuntimeStats() {
 	let serversPerUser = 0;
 
 	for(let uid in connections) {
-		let c = connections[uid];
+		let ca = connections[uid];
 		users += 1;
-		for(let snam in c) {
+		for(let snam in ca) {
+			if(!snam) continue;
 			if(snam == "host") continue;
-			let snam = c[snam];
 			servers += 1;
 		}
 	}
@@ -52,7 +52,7 @@ function printRuntimeStats() {
 	if(servers != 0)
 		serversPerUser = users/servers;
 
-	console.log(""+date+": Currently connected users: "+users+"; IRC server connections: "+servers+"; Average servers per user: "+serversPerUser);
+	console.log(date+": Currently connected users: "+users+"; IRC server connections: "+servers+"; Average servers per user: "+serversPerUser+"; Total connections made: "+runtime_stats.connectionsMade);
 }
 
 let io = sockio.listen(app.listen(port, function() {
