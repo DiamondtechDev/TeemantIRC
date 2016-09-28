@@ -1,0 +1,282 @@
+props2(prop, args)
+    -webkit-{prop} args
+    -moz-{prop} args
+    {prop} args
+
+box-shadow()
+    props2('box-shadow', arguments)
+
+.grade1
+    font-size: 200%
+    color: #00BCD4
+
+.grade2
+    font-size: 150%
+    color: #00BCD4
+
+.grade3
+    font-size: 120%
+    color: #00BCD4
+
+.ircclient
+    background: rgb(255,255,255)
+    background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(229,229,229,1) 100%)
+    background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%,rgba(229,229,229,1) 100%)
+    background: linear-gradient(to bottom, rgba(255,255,255,1) 0%,rgba(229,229,229,1) 100%)
+    input[type=text], input[type=number], input[type=password]
+        padding: 8px;
+        width: 300px;
+        border-radius: 5px;
+        border: 1px solid #d2d2d2;
+        box-shadow inset 2px 2px 4px #dcdcdc;
+    input[type="submit"]
+        background: rgb(135,224,253);
+        background: -moz-linear-gradient(top, rgba(135,224,253,1) 0%, rgba(83,203,241,1) 40%, rgba(5,171,224,1) 100%);
+        background: -webkit-linear-gradient(top, rgba(135,224,253,1) 0%,rgba(83,203,241,1) 40%,rgba(5,171,224,1) 100%);
+        background: linear-gradient(to bottom, rgba(135,224,253,1) 0%,rgba(83,203,241,1) 40%,rgba(5,171,224,1) 100%);
+        border: 1px solid #2196F3;
+        color: #fff;
+        font-size: 120%;
+        &:hover
+            background: rgb(196,239,252);
+            background: -moz-linear-gradient(top, rgba(196,239,252,1) 0%, rgba(127,213,239,1) 40%, rgba(57,183,221,1) 100%);
+            background: -webkit-linear-gradient(top, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
+            background: linear-gradient(to bottom, rgba(196,239,252,1) 0%,rgba(127,213,239,1) 40%,rgba(57,183,221,1) 100%);
+    .coverwindow
+        .wrapper
+            background-color: #f7f7f7;
+            border: 1px solid #dadada;
+            box-shadow 4px 4px 18px #d6d6d6;
+            .msg.error
+                color: red;
+            label
+                font-size: 80%
+                color: #2196F3
+                &.autosize
+                    font-size: 90% !important
+    #chat
+        .ircwrapper
+            .toolbar
+                background-color: #00c7e0
+                box-shadow 2px 2px 4px #cecece
+                .open_settings
+                    background-image: url(../image/settings.svg)
+                    background-repeat: no-repeat
+                    background-size: contain
+                .tabby
+                    .tab
+                        background-color: #29e1ff
+                        border: 1px solid #00d0ea
+                        box-shadow inset 4px 4px 8px #44ebff
+                        color: #fff;
+                        #unread
+                            background-color: #bf0000
+                            border: 1px solid #b00
+                            box-shadow inset 2px 2px 3px #f00
+                        #close
+                            color: #ff3d3d
+                        &:hover
+                            background-color: #63e9ff;
+                            box-shadow inset 4px 4px 8px #86f2ff
+                        &.active
+                            background-color: #00b9d8
+                            border: 1px solid #009aad
+                            box-shadow inset 4px 4px 8px #009caf
+                            color: #ffffff
+                            &:hover
+                                background-color: #00c7e8
+            .chatarea
+                .smsc-nicklistbtn
+                    background-image: url(../image/users.svg)
+                    background-repeat: no-repeat
+                    background-size: contain
+                    background-color: #00bcd4
+                    border: 5px solid #389dbb
+                .topicbar
+                    background-color: #fff
+                    border-bottom: 1px solid #ddd
+                    &:hover
+                        height: auto
+                        max-height: 100px
+                        overflow: auto
+                        word-wrap: break-word
+                .nicklist
+                    border-left: 1px solid #ddd
+                    background-color: #ffffff
+                    .nick
+                        &:hover
+                            background-color: #aeebff
+                        .prefix
+                            background-color: #05abe0
+                            color: #fff
+                .settings
+                    .theme_button
+                        background-color: #e0e0e0
+                        border: 1px solid #a7a7a7
+                        &:hover
+                            background-color: #efefef
+                        &.selected
+                            border: 2px solid #00a0b5 !important
+            .input
+                background-color: #00c7e0
+                .my_nickname
+                    background-color: #00efef
+                .inputwrapper
+                    input
+                        border: 1px solid #929292
+                        box-shadow inset 4px 4px 8px #d8d8d8
+                .sendbutton
+                    background-image: url(../image/send.svg)
+                    background-repeat: no-repeat
+                    background-size: contain
+
+.message
+    &.type_simple
+        &.mentioned
+            background-color: #aeebff
+        .timestamp
+            color: #696969
+            &:before
+                color: #607D8B
+                content: "["
+            &:after
+                color: #607D8B
+                content: "]"
+        .sender
+            color: #3F51B5
+            &:before
+                content: "<"
+            &:after
+                content: ">"
+        .arrowin, .arrowout
+            font-weight: bolder
+        .channel
+            font-weight: bold
+            color: #a0a0a0
+        .m_listentry 
+            .channel
+                min-width: 120px
+                display: inline-block
+            .usercount
+                display: inline-block
+                min-width: 45px
+                text-align: center
+
+    .reason, .hostmask
+        &:before
+            content: "("
+        &:after
+            content: ")"
+        &:before, &:after
+            color: #009606
+            font-weight: bold
+    .reason
+        color: #bf0000
+    .hostmask
+        color: #004c88
+    .arrowin
+        color: #00ab00
+    .arrowout
+        color: #dc0f00
+    &.m_quit, &.m_part, &.m_kick
+        color: red
+    &.m_join
+        color: green
+    &.m_topic .content, &.m_names .content
+        color: #03A9F4
+        font-weight: bold
+    &.m_motd .content
+        font-family: monospace
+    &.m_nick .content, &.m_notice .content
+        color: #FF9800
+        font-weight: bold
+    &.m_action 
+        .actionee
+            color: #3f51b5
+        .asterisk
+            color: #e4c000
+    &.m_mode 
+        .content
+            font-style: italic
+        .mode
+            color: #008000
+        .asterisk
+            color: #05abe0
+    &.m_error .content
+        color: red
+        font-weight: bold
+    &.m_help .content
+        color: #008000;
+        font-weight: bold
+
+.message, .topicbar
+    .irc-bg00,.irc-bg0 
+        background-color: white
+    .irc-bg01,.irc-bg1 
+        background-color: black
+    .irc-bg02,.irc-bg2 
+        background-color: navy
+    .irc-bg03,.irc-bg3 
+        background-color: green
+    .irc-bg04,.irc-bg4 
+        background-color: red
+    .irc-bg05,.irc-bg5 
+        background-color: brown
+    .irc-bg06,.irc-bg6 
+        background-color: purple
+    .irc-bg07,.irc-bg7 
+        background-color: orange
+    .irc-bg08,.irc-bg8 
+        background-color: yellow
+    .irc-bg09,.irc-bg9 
+        background-color: lime
+    .irc-bg10 
+        background-color: teal
+    .irc-bg11 
+        background-color: cyan
+    .irc-bg12 
+        background-color: blue
+    .irc-bg13 
+        background-color: pink
+    .irc-bg14 
+        background-color: grey
+    .irc-bg15 
+        background-color: lightgrey
+    .irc-fg00,.irc-fg0 
+        color: white
+    .irc-fg01,.irc-fg1 
+        color: black
+    .irc-fg02,.irc-fg2 
+        color: navy
+    .irc-fg03,.irc-fg3 
+        color: green
+    .irc-fg04,.irc-fg4 
+        color: red
+    .irc-fg05,.irc-fg5 
+        color: brown
+    .irc-fg06,.irc-fg6 
+        color: purple
+    .irc-fg07,.irc-fg7 
+        color: orange
+    .irc-fg08,.irc-fg8 
+        color: #dcdc00
+    .irc-fg09,.irc-fg9 
+        color: #00e600
+    .irc-fg10 
+        color: teal
+    .irc-fg11 
+        color: #00d2d2
+    .irc-fg12 
+        color: blue
+    .irc-fg13 
+        color: pink
+    .irc-fg14 
+        color: grey
+    .irc-fg15 
+        color: lightgrey
+    .irc-bold
+        font-weight: bold
+    .irc-italic
+        font-style: italic
+    .irc-underline
+        text-decoration: underline

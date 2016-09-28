@@ -7,7 +7,8 @@ window.irc = {
 		timestamps: true,
 		timestampFormat: "HH:mm:ss",
 		colorNicknames: true,
-		colorNicklist: false
+		colorNicklist: false,
+		theme: "default"
 	},
 	serverData: {},
 	serverChatQueue: {},
@@ -18,16 +19,13 @@ window.irc = {
 window.clientdom = {connector: {}, settings: {}};
 
 window.colorizer = {
-	theme: {
-		H: [1, 360],
-		S: [30, 100],
-		L: [30, 70]
-	},
 	get_random_color: function(nickname) {
+		let themefunc = window.themes.available[irc.config.theme].nick_pallete;
+
 		Math.seedrandom(nickname);
-		let h = rand(colorizer.theme.H[0], colorizer.theme.H[1]); // color hue between 1 and 360
-		let s = rand(colorizer.theme.S[0], colorizer.theme.S[1]); // saturation 30-100%
-		let l = rand(colorizer.theme.L[0], colorizer.theme.L[1]); // lightness 30-70%
+		let h = rand(themefunc.H[0], themefunc.H[1]);
+		let s = rand(themefunc.S[0], themefunc.S[1]);
+		let l = rand(themefunc.L[0], themefunc.L[1]);
 		return 'hsl(' + h + ',' + s + '%,' + l + '%)';
 	},
 	strip: function(message) {
@@ -252,12 +250,19 @@ function linkify(text) {
 
 function removeClass(element, cl) {
 	let classList = element.className.split(" ");
-	remove_str(classList, cl);
+
+	if(classList.indexOf(cl) != -1)
+		classList.splice(classList.indexOf(cl), 1);
+	
 	element.className = classList.join(" ");
 }
 
 function addClass(element, cl) {
 	let classList = element.className.split(" ");
+	
+	if(classList.indexOf(cl) != -1)
+		return;
+
 	classList.push(cl);
 	element.className = classList.join(" ");
 }
@@ -339,6 +344,25 @@ let composer = {
 			}
 			return element;
 		}
+	},
+	theme_selection: function(name, theme) {
+		let btn = document.createElement('div');
+		btn.className = "theme_button theme_"+theme.type;
+		let sampler = document.createElement('div');
+		sampler.className = "sampler";
+		sampler.style['background-color'] = theme.colorSamples.background;
+		let toolbar = document.createElement('span');
+		toolbar.className = "s_toolbar";
+		toolbar.style['background-color'] = theme.colorSamples.toolbar;
+		let nameb = document.createElement('span');
+		nameb.className = "name";
+		nameb.innerHTML = theme['name'];
+		sampler.appendChild(toolbar);
+		btn.appendChild(sampler);
+		btn.appendChild(nameb);
+		btn.setAttribute('id', 'theme-'+name);
+
+		return btn;
 	}
 }
 
@@ -939,6 +963,7 @@ class Settings extends Buffer {
 		this.tab = null;
 		this.isOpen = false;
 		this.timeout = null;
+		this.themeSelection = "";
 
 		clientdom.settings.save.onclick = (e) => {
 			this.saveSpecified();
@@ -946,6 +971,46 @@ class Settings extends Buffer {
 
 		clientdom.settings.open.onclick = (e) => {
 			this.open();
+		}
+
+		this.theme_buttons();
+	}
+
+	set_active_selection(name) {
+		let all = clientdom.settings.available_themes.querySelectorAll('.theme_button');
+		if(all.length > 0) {
+			for(let a in all) {
+				if(all[a] && all[a]['className']) {
+					let elem = all[a];
+					if(elem.getAttribute('id') == 'theme-'+name) {
+						addClass(elem, "selected");
+					} else {
+						removeClass(elem, "selected");
+					}
+				}
+			}
+		}
+	}
+
+	theme_buttons() {
+		for(let n in window.themes.available) {
+			let theme = window.themes.available[n];
+			let button = composer.theme_selection(n, theme);
+
+			clientdom.settings.available_themes.appendChild(button);
+
+			button.onclick = (e) => {
+				this.themeSelection = n;
+				this.set_active_selection(this.themeSelection);
+			}
+		}
+	}
+
+	switch_theme() {
+		if(this.themeSelection != '') {
+			window.themes.change_theme(this.themeSelection);
+			irc.config.theme = this.themeSelection;
+			this.set_active_selection(this.themeSelection);
 		}
 	}
 
@@ -972,14 +1037,18 @@ class Settings extends Buffer {
 		if(this.timeout)
 			clearTimeout(this.timeout);
 
+		this.switch_theme();
+
 		for(let key in irc.config) {
 			let value = irc.config[key];
 			let type = typeof(value);
 
-			if(type == "boolean")
-				irc.config[key] = clientdom.settings[key].checked;
-			else
-				irc.config[key] = clientdom.settings[key].value;
+			if(clientdom.settings[key]) {
+				if(type == "boolean")
+					irc.config[key] = clientdom.settings[key].checked;
+				else
+					irc.config[key] = clientdom.settings[key].value;
+			}
 		}
 		clientdom.settings.saveStatus.innerHTML = "<span class='success'>Settings saved!</span>";
 
@@ -1000,7 +1069,13 @@ class Settings extends Buffer {
 					for(let key in irc.config) {
 						let value = irc.config[key];
 						let type = typeof(value);
+
 						if(settings[key]) {
+							if(key == 'theme') {
+								this.themeSelection = settings[key];
+								continue;
+							}
+
 							if(type == "boolean")
 								clientdom.settings[key].checked = settings[key];
 							else
@@ -1017,10 +1092,12 @@ class Settings extends Buffer {
 			let value = irc.config[key];
 			let type = typeof(value);
 
-			if(type == "boolean")
-				clientdom.settings[key].checked = value;
-			else
-				clientdom.settings[key].value = value;
+			if(clientdom.settings[key]) {
+				if(type == "boolean")
+					clientdom.settings[key].checked = value;
+				else
+					clientdom.settings[key].value = value;
+			}
 		}
 	}
 
@@ -1777,6 +1854,7 @@ window.onload = function() {
 		clientdom.settings[key] = clientdom.settings.frame.querySelector('#s_'+key);
 	}
 
+	clientdom.settings['available_themes'] = clientdom.settings.frame.querySelector('.available_themes');
 	clientdom.settings['save'] = clientdom.settings.frame.querySelector('#save_settings');
 	clientdom.settings['saveStatus'] = clientdom.settings.frame.querySelector('#settings_status');
 	clientdom.connector['frame'] = irc.primaryFrame.querySelector('#authdialog');

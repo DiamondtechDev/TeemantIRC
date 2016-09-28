@@ -11,9 +11,11 @@
 		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src="js/main.js"></script>
 		<script type="text/javascript" src="js/colorparser.js"></script>
+		<script type="text/javascript" src="js/theme.js"></script>
 
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
-		<link rel="stylesheet" type="text/css" href="css/main.css">
+		<link rel="stylesheet" type="text/css" href="css/layout.css">
+		<link rel="stylesheet" type="text/css" href="css/theme_default.css" id="theme_stylesheet">
 	</head>
 	<!-- Codepony Diamond -->
 	<body>
@@ -70,7 +72,7 @@
 							<input type="text" name="timestamp_format" id="s_timestampFormat" value="HH:mm:ss"><br>
 							<i style="font-size: 80%;">`<code>hh:mm:ss TT</code>` would be 12-hour format with PM/AM</i>
 							<h1 class="grade3">Themes</h1>
-							<p><i>Coming soon!</i></p>
+							<div class="available_themes"></div>
 							<br>
 							<p><button class="regular_btn" id="save_settings">Save Settings</button></p>
 							<span class="grade3" id="settings_status"></span>

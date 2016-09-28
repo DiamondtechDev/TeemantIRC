@@ -36,6 +36,20 @@ body
     position: absolute
     width: 100%
     height: 100%
+    input[type=text], input[type=number], input[type=password]
+        padding: 8px;
+        width: 300px;
+        border-radius: 5px;
+    input[type="submit"]
+        width: 318px;
+        padding: 12px;
+        margin-top: 20px;
+        display: block;
+        border-radius: 4px;
+        font-size: 120%;
+        font-weight: bold;
+        text-transform: uppercase;
+        cursor: pointer
     .coverwindow
         position: absolute
         width: 100%
@@ -56,20 +70,6 @@ body
                     display: inline-block !important
                     font-size: 90% !important
                     margin-bottom: 10px
-            input[type=text], input[type=number], input[type=password]
-                padding: 8px;
-                width: 300px;
-                border-radius: 5px;
-            input[type="submit"]
-                width: 318px;
-                padding: 12px;
-                margin-top: 20px;
-                display: block;
-                border-radius: 4px;
-                font-size: 120%;
-                font-weight: bold;
-                text-transform: uppercase;
-                cursor: pointer
     #chat
         overflow: hidden;
         .ircwrapper
@@ -207,6 +207,25 @@ body
                     min-width: 360px;
                     margin: auto;
                     overflow: auto;
+                    .theme_button
+                        width: 120px
+                        height: 140px
+                        border-radius: 5px
+                        display: inline-block
+                        margin: 5px
+                        cursor: pointer
+                        .sampler
+                            width: 90%
+                            height: 75%
+                            margin: 5px
+                            .s_toolbar
+                                width: 100%
+                                height: 40%
+                                display: block
+                        .name
+                            width: 100%
+                            text-align: center
+                            display: block
                     .grade1, .grade2, .grade3
                         text-align: left;
                 &.vnicks
