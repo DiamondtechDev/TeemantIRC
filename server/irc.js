@@ -212,11 +212,13 @@ class IRCConnectionHandler {
 			case "251":
 			case "290":
 			case "292":
+			case "381":
 			case "255":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.trailing, server: serverName, from: realServerName});
 				break;
 			case "252":
 			case "254":
+			case "396":
 			case "042":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.arguments[1] +" "+ line.trailing, server: serverName, from: realServerName});
 				break;
@@ -237,6 +239,14 @@ class IRCConnectionHandler {
 					isChannelMode = true;
 
 				let modes = line.arguments[1];
+
+				if(!modes && line.trailing != '')
+					modes = line.trailing;
+
+				let sender = line.user.nickname;
+				if(sender == '')
+					sender = line.user.hostname;
+
 				method = modes.substring(0, 1);
 				modes = modes.substring(1).split('');
 				let pass = [];
@@ -246,7 +256,7 @@ class IRCConnectionHandler {
 						let mode = modes[i];
 						if(this.conn.data.supportedModes[mode])
 							this.conn.emit('pass_to_client', {type: "mode_"+(method=='+'?'add':'del'), target: line.arguments[0], mode: mode, 
-										modeTarget: line.arguments[2+parseInt(i)], server: serverName, user: line.user});
+										modeTarget: line.arguments[2+parseInt(i)], server: serverName, user: {nickname: sender}});
 						else
 							pass.push(mode);
 					}
@@ -255,8 +265,8 @@ class IRCConnectionHandler {
 				}
 
 				if(pass.length > 0)
-					this.conn.emit('pass_to_client', {type: "mode", target: line.arguments[0], message: line.arguments.slice(1).join(" "), 
-								server: serverName, user: line.user});
+					this.conn.emit('pass_to_client', {type: "mode", target: line.arguments[0], message: method+pass.join(''), 
+								server: serverName, user: {nickname: sender}});
 				break;
 			case "433":
 				let newNick = this.conn.config.nickname + "_";

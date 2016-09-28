@@ -13,6 +13,10 @@ let ircclient = require(__dirname+'/server/irc');
 
 let port = config.server.port || 8080;
 
+let runtime_stats = {
+	connectionsMade: 0
+};
+
 let connections = {};
 
 process.stdin.resume();
@@ -29,8 +33,31 @@ app.use('/', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
 app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
 app.use('/', router);
 
+function printRuntimeStats() {
+	let date = new Date();
+	let users = 0;
+	let servers = 0;
+	let serversPerUser = 0;
+
+	for(let uid in connections) {
+		let c = connections[uid];
+		users += 1;
+		for(let snam in c) {
+			if(snam == "host") continue;
+			let snam = c[snam];
+			servers += 1;
+		}
+	}
+
+	if(servers != 0)
+		serversPerUser = users/servers;
+
+	console.log(""+date+": Currently connected users: "+users+"; IRC server connections: "+servers+"; Average servers per user: "+serversPerUser);
+}
+
 let io = sockio.listen(app.listen(port, function() {
 	console.log("*** Listening on http://localhost:" + port + "/");
+	setInterval(printRuntimeStats, 3600000);
 }));
 
 function resolveHostname(ipaddr) {
@@ -66,7 +93,10 @@ io.sockets.on('connection', function (socket) {
 	hostQuery.then((arr) => {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
-	}).catch((err) => { console.log("Host resolve for "+socket.id+" failed: ", err); });
+	}).catch((err) => {
+		if(config.server.debug)
+			console.log("Host resolve for "+socket.id+" failed: ", err); 
+	});
 
 	if(config.server.debug)
 		console.log("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
@@ -114,6 +144,8 @@ io.sockets.on('connection', function (socket) {
 			socket.emit('act_client', {type: "event_connect", address: connectiondata.server, network: newConnection.data.network,
 										supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname,
 										max_channel_length: newConnection.data.max_channel_length});
+
+			runtime_stats.connectionsMade += 1;
 		});
 
 		if(config.server.debug) {
