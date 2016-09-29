@@ -1734,10 +1734,11 @@ class IRCChatWindow {
 
 		if(user.nickname == irc.serverData[server].my_nick)
 			buffer.setAliveStatus(true);
+		else
+			buffer.nicklist.nickAdd(user.nickname);
 
 		buffer.addMessage("<span class='hostmask'>{0}@{1}</span> has joined <span class='channel'>{2}</span>".format(user.username, 
 				user.hostname, channel), user.nickname, "join");
-		buffer.nicklist.nickAdd(user.nickname);
 	}
 
 	handleLeave(server, user, channel, reason, kicker) {

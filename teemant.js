@@ -49,8 +49,8 @@ function printRuntimeStats() {
 		}
 	}
 
-	if(servers != 0)
-		serversPerUser = users/servers;
+	if(users != 0) // Don't divide by zero lmao
+		serversPerUser = servers/users;
 
 	console.log(date+": Currently connected users: "+users+"; IRC server connections: "+servers+"; Average servers per user: "+serversPerUser+"; Total connections made: "+runtime_stats.connectionsMade);
 }
@@ -209,5 +209,6 @@ process.on('SIGINT', () => {
 			connections[c][ircconn].disconnect();
 		}
 	}
+	printRuntimeStats();
 	process.exit();
 });
