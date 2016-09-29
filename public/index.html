@@ -61,17 +61,20 @@
 						<div class="settings" style="display: none;">
 							<h1 class="grade1">Teemant Settings</h1>
 							<h1 class="grade2">Chat</h1>
-							<p>Shared input field <input type="checkbox" name="colors" id="s_sharedInput"></p>
+							<p><label for="s_scrollOnResize">Scroll to bottom on window resize</label> <input type="checkbox" id="s_scrollOnResize" checked="checked"></p>
+							<h1 class="grade3">Input</h1>
+							<p><label for="s_sharedInput">Shared input field</label> <input type="checkbox" id="s_sharedInput"></p>
+							<p><label for="s_scrollOnFocus"> Scroll to bottom on input focus</label> <input type="checkbox" id="s_scrollOnFocus" checked="checked"></p>
 							<h1 class="grade3">Colors</h1>
-							<p>Enable colored messages <input type="checkbox" name="colors" id="s_colors" checked="checked"></p>
-							<p>Color nicknames <input type="checkbox" name="colored_nicks" id="s_colorNicknames" checked="checked"></p>
-							<p>Color nicknames in the user list<input type="checkbox" name="colored_nicks_list" id="s_colorNicklist"></p>
+							<p><label for="s_colors">Enable colored messages</label> <input type="checkbox" id="s_colors" checked="checked"></p>
+							<p><label for="s_colorNicknames">Color nicknames</label> <input type="checkbox" id="s_colorNicknames" checked="checked"></p>
+							<p><label for="s_colorNicklist">Color nicknames in the user list</label> <input type="checkbox" id="s_colorNicklist"></p>
 							<h1 class="grade3">Timestamps</h1>
-							<p>Enable timestamps on messages <input type="checkbox" name="timestamps" id="s_timestamps" checked="checked"></p>
-							<label for="timestamp_format">Timestamp format</label>
-							<input type="text" name="timestamp_format" id="s_timestampFormat" value="HH:mm:ss"><br>
+							<p><label for="s_timestamps">Enable timestamps on messages</label> <input type="checkbox" id="s_timestamps" checked="checked"></p>
+							<label for="s_timestampFormat">Timestamp format</label>
+							<input type="text" id="s_timestampFormat" value="HH:mm:ss"><br>
 							<i style="font-size: 80%;">`<code>hh:mm:ss TT</code>` would be 12-hour format with PM/AM</i>
-							<h1 class="grade3">Themes</h1>
+							<h1 class="grade2">Themes</h1>
 							<div class="available_themes"></div>
 							<br>
 							<p><button class="regular_btn" id="save_settings">Save Settings</button></p>

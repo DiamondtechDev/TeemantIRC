@@ -8,12 +8,14 @@ window.irc = {
 		timestampFormat: "HH:mm:ss",
 		colorNicknames: true,
 		colorNicklist: false,
+		scrollOnResize: true,
+		scrollOnFocus: true,
 		theme: "default"
 	},
 	serverData: {},
 	serverChatQueue: {},
 	chatType: "simple",
-	documentTitle: "TeemantIRC"
+	documentTitle: "TeemantIRC",
 };
 
 window.clientdom = {connector: {}, settings: {}};
@@ -1317,6 +1319,11 @@ class InputHandler {
 			this.keyDownHandle(e, key);
 		}
 
+		clientdom.input.onfocus = (e) => {
+			if(irc.config.scrollOnFocus)
+				clientdom.letterbox.scrollTop = clientdom.letterbox.scrollHeight;
+		}
+
 		clientdom.send.onclick = (e) => {
 			this.handleInput();
 		}
@@ -1844,6 +1851,11 @@ function parseURL() {
 }
 
 window.onpopstate = parseURL;
+
+window.onresize = function() {
+	if(irc.config.scrollOnResize)
+		clientdom.letterbox.scrollTop = clientdom.letterbox.scrollHeight;
+}
 
 window.onload = function() {
 	irc.primaryFrame = document.querySelector('.ircclient');
