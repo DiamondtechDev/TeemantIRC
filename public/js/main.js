@@ -464,7 +464,7 @@ let commands = {
 
 	action: {execute: function(buffer, handler, command, message, listargs) {
 		irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: "\x01ACTION "+message.substring(command.length+2)+"\x01", arguments: [buffer.name]});
-	}, description: "<message> - 'act' as yourself"},
+	}, description: "<message> - 'act' as yourself", aliases: ['me']},
 
 	list: {execute: function(buffer, handler, command, message, listargs) {
 		irc.socket.emit("userinput", {command: "list", server: buffer.server, message: "", arguments: listargs.splice(1)});
