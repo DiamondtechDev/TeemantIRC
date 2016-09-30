@@ -2,6 +2,7 @@ let EventEmitter = require('events').EventEmitter;
 let net = require('net');
 let tls  = require('tls');
 let configuration = require(__dirname+"/config");
+let pkg = require(__dirname+"/../package.json");
 let parse = require(__dirname+"/parser");
 let webirc = require(__dirname+"/webirc");
 
@@ -72,6 +73,35 @@ class IRCConnectionHandler {
 		else
 			for(let a in list)
 				this.conn.queue.whois[whom][a] = list[a];
+	}
+
+	ctcpManage(data) {
+		let line = data.trailing.replace(/\x01/g, '').trim().split(' ');
+		if(!line[0]) return;
+
+		let resp = "\x01"+line[0]+" {0}\x01";
+
+		switch(line[0].toLowerCase()) {
+			case "ping":
+				if(line[1] != null && line[1] != '')
+					resp = resp.format(line.slice(1).join(' '));
+				else
+					resp = null;
+				break;
+			case "version":
+				resp = resp.format("TeemantIRC ver. {0} - {1} - https://teemant.icynet.ml/".format(pkg.version, pkg.description));
+				break;
+			case "source":
+				resp = resp.format("https://github.com/DiamondtechDev/TeemantIRC");
+				break;
+			default:
+				resp = null;
+		}
+
+		if (resp != null)
+			this.conn.write("NOTICE {0} :{1}".format(data.user.nickname, resp));
+
+		return resp != null;
 	}
 
 	handleServerLine(line) {
@@ -165,12 +195,8 @@ class IRCConnectionHandler {
 			case "PRIVMSG":
 				let type = "privmsg";
 
-				if(line.trailing.indexOf('\x01ACTION') == 0) {
-					// TODO: remove once proper CTCP handling is done;
-				} else if(line.trailing.indexOf('\x01') == 0) {
-					// TODO: handle CTCPs
-					return;
-				}
+				if(line.trailing.indexOf('\x01') == 0 && line.trailing.indexOf('\x01ACTION') != 0)
+					return this.ctcpManage(line);
 
 				if(line.user.nickname != "")
 					this.conn.emit('pass_to_client', {type: "message", messageType: type, to: line.arguments[0], 

@@ -1,7 +1,7 @@
 {
   "name": "teemantirc",
   "version": "1.0.0",
-  "description": "Web-based IRC client ",
+  "description": "Web-based IRC client",
   "main": "teemant.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
