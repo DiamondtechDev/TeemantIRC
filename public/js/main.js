@@ -959,23 +959,10 @@ class Buffer {
 	}
 }
 
-class Settings extends Buffer {
-	constructor() {
-		super("", "settings", "Settings", "applet");
-		this.tab = null;
-		this.isOpen = false;
-		this.timeout = null;
-		this.themeSelection = "";
-
-		clientdom.settings.save.onclick = (e) => {
-			this.saveSpecified();
-		}
-
-		clientdom.settings.open.onclick = (e) => {
-			this.open();
-		}
-
-		this.theme_buttons();
+class ThemeSelector {
+	constructor(settings, variable) {
+		this.settings = settings;
+		this.variable = variable;
 	}
 
 	set_active_selection(name) {
@@ -994,17 +981,45 @@ class Settings extends Buffer {
 		}
 	}
 
-	theme_buttons() {
+	bindButton(button, theme) {
+		button.onclick = (e) => {
+			this.settings.themeSelection = theme;
+			this.set_active_selection(theme);
+		}
+	}
+
+	render() {
+		clientdom.settings.available_themes.innerHTML = "";
+
 		for(let n in window.themes.available) {
 			let theme = window.themes.available[n];
 			let button = composer.theme_selection(n, theme);
 
 			clientdom.settings.available_themes.appendChild(button);
 
-			button.onclick = (e) => {
-				this.themeSelection = n;
-				this.set_active_selection(this.themeSelection);
-			}
+			this.bindButton(button, n);
+		}
+	}
+}
+
+class Settings extends Buffer {
+	constructor() {
+		super("", "settings", "Settings", "applet");
+		this.tab = null;
+		this.isOpen = false;
+		this.timeout = null;
+
+		this.themeSelection = "";
+
+		this.themeSelector = new ThemeSelector(this);
+		this.themeSelector.render();
+
+		clientdom.settings.save.onclick = (e) => {
+			this.saveSpecified();
+		}
+
+		clientdom.settings.open.onclick = (e) => {
+			this.open();
 		}
 	}
 
@@ -1012,7 +1027,7 @@ class Settings extends Buffer {
 		if(this.themeSelection != '') {
 			window.themes.change_theme(this.themeSelection);
 			irc.config.theme = this.themeSelection;
-			this.set_active_selection(this.themeSelection);
+			this.themeSelector.set_active_selection(this.themeSelection);
 		}
 	}
 

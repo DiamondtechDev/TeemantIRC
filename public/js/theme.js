@@ -26,7 +26,7 @@ window.themes = {
 			nick_pallete: {
 				H: [1, 360],
 				S: [30, 100],
-				L: [40, 90]
+				L: [50, 100]
 			},
 			stylesheet: "theme_night",
 			default: false,
