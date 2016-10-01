@@ -159,21 +159,12 @@ io.sockets.on('connection', function (socket) {
 		}
 
 		newConnection.on('connerror', (data) => {
-			let message = "An error occured";
-			let inconnect = true;
-		
-			if(data['message'])
-				message = data.message;
-
-			if(newConnection.authenticated == false) {
-				message = "Failed to connect to the server!";
-				inconnect = false;
-			}
-
 			if(config.server.debug)
 				console.log(data);
 
-			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), server: connectiondata.server, message: message, error: true});
+			if(newConnection.authenticated == false)
+				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
+					message: "Failed to connect to the server!", error: true});
 		});
 
 		newConnection.on('pass_to_client', (data) => {
@@ -181,21 +172,13 @@ io.sockets.on('connection', function (socket) {
 		});
 
 		newConnection.on('closed', (data) => {
-			let message = "Connection closed";
-			let inconnect = true;
+			if(config.server.debug)
+				console.log(data);
 
-			if(newConnection.authenticated == false) {
-				message = "Failed to connect to the server!";
-				
-				if(config.server.debug)
-					console.log(data);
-
-				inconnect = false;
-			}
-
-			socket.emit('act_client', {type: (inconnect == true ? 'server_message' : 'connect_message'), server: connectiondata.server, message: message, error: true});
-			
-			if(inconnect)
+			if(newConnection.authenticated == false)
+				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
+					message: "Failed to connect to the server!", error: true});
+			else
 				socket.emit('act_client', {type: 'event_server_quit', server: connectiondata.server});
 		});
 	});

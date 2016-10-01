@@ -242,6 +242,15 @@ a:hover {
 .message .arrowout {
   color: #dc0f00;
 }
+.message.m_ctcp_response,
+.message.m_ctcp_request {
+  color: #39b7dd;
+  font-weight: bold;
+}
+.message.m_ctcp_response .asterisk,
+.message.m_ctcp_request .asterisk {
+  color: #05abe0;
+}
 .message.m_quit,
 .message.m_part,
 .message.m_kick {
@@ -352,11 +361,11 @@ a:hover {
 }
 .message .irc-bg11,
 .topicbar .irc-bg11 {
-  background-color: #0ff;
+  background-color: #00d2d2;
 }
 .message .irc-bg12,
 .topicbar .irc-bg12 {
-  background-color: #0091bd;
+  background-color: #004aff;
 }
 .message .irc-bg13,
 .topicbar .irc-bg13 {
@@ -440,7 +449,7 @@ a:hover {
 }
 .message .irc-fg12,
 .topicbar .irc-fg12 {
-  color: #00f;
+  color: #004aff;
 }
 .message .irc-fg13,
 .topicbar .irc-fg13 {

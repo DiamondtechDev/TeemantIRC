@@ -3,6 +3,23 @@
 // or
 // :hostname command arg ume nts :trailing
 
+function parseERROR(line) {
+	let final = {
+		user: { nickname: "", username: "", hostname: "" },
+		command: "ERROR",
+		message: "",
+		raw: line.join(" ")
+	}
+
+	let pass1 = line.slice(1).join(" ");
+	if(pass1.indexOf(":") == 0)
+		pass1 = pass1.substring(1);
+
+	final.message = pass1;
+
+	return final;
+}
+
 module.exports = function(rawline) {
 	let final = {
 		user: {
@@ -10,7 +27,7 @@ module.exports = function(rawline) {
 			username: "",
 			hostname: ""
 		},
-		command: "error",
+		command: "",
 		arguments: [],
 		trailing: "",
 		raw: rawline
@@ -18,7 +35,7 @@ module.exports = function(rawline) {
 
 	let pass1 = (rawline.indexOf(':') == 0 ? rawline.substring(1).split(" ") : rawline.split(" "));
 	if (pass1[0] === "ERROR")
-		return final;
+		return parseERROR(pass1);
 
 	if(pass1[0].indexOf("!") != -1) {
 		let nickuser = pass1[0].split('!');

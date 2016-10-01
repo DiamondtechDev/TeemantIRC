@@ -54,6 +54,18 @@ class IRCConnectionHandler {
 			case "list":
 				this.conn.write(data.command.toUpperCase());
 				break;
+			case "ctcp":
+				let ctcpmsg = '';
+				
+				if(data.arguments[1].toLowerCase() == 'ping')
+					ctcpmsg = 'PING '+Math.floor(Date.now()/1000);
+				else
+					ctcpmsg = data.message;
+
+				this.conn.write('PRIVMSG {0} :\x01{1}\x01'.format(data.arguments[0], ctcpmsg));
+				this.conn.emit('pass_to_client', {type: "message", messageType: "ctcp_request", to: this.conn.config.nickname, 
+													  user: {nickname: data.arguments[0]}, message: ctcpmsg, server: data.server});
+				break;
 			default:
 				this.conn.write(data.command.toUpperCase()+' '+data.message);
 		}
@@ -193,18 +205,29 @@ class IRCConnectionHandler {
 					delete this.conn.queue["names"];
 				break;
 			case "PRIVMSG":
-				let type = "privmsg";
-
 				if(line.trailing.indexOf('\x01') == 0 && line.trailing.indexOf('\x01ACTION') != 0)
 					return this.ctcpManage(line);
 
 				if(line.user.nickname != "")
-					this.conn.emit('pass_to_client', {type: "message", messageType: type, to: line.arguments[0], 
+					this.conn.emit('pass_to_client', {type: "message", messageType: "privmsg", to: line.arguments[0], 
 													  user: line.user, message: line.trailing, server: serverName});
 				else
-					this.conn.emit('pass_to_client', {type: "server_message", messageType: type, message: line.trailing, server: serverName, from: realServerName});
+					this.conn.emit('pass_to_client', {type: "server_message", messageType: "privmsg", message: line.trailing, server: serverName, from: realServerName});
 				break;
 			case "NOTICE":
+				if(line.trailing.indexOf('\x01') == 0 && line.trailing.indexOf('\x01ACTION') != 0) {
+					let composethis = line.trailing.replace(/\x01/g,'').trim().split(" ");
+					composethis[0] = composethis[0].toUpperCase();
+					let message = composethis.join(" ");
+					
+					if(composethis[0] == 'PING') 
+						message = Math.floor(Date.now()/1000) - composethis[1]+"s";
+
+					this.conn.emit('pass_to_client', {type: "message", messageType: "ctcp_response", to: line.arguments[0], 
+													  user: line.user, message: message, server: serverName});
+					return;
+				}
+
 				if(line.user.nickname != "")
 					this.conn.emit('pass_to_client', {type: "message", messageType: "notice", to: line.arguments[0], 
 													  user: line.user, message: line.trailing, server: serverName});
@@ -385,6 +408,10 @@ class IRCConnectionHandler {
 			case "322":
 				this.conn.emit('pass_to_client', {type: "listedchan", channel: line.arguments[1], users: line.arguments[2], topic: line.trailing,
 								server: serverName, from: realServerName});
+				break;
+			case "CAP":
+				// might come in the future, who knows
+				this.conn.write("CAP END");
 				break;
 		}
 	}

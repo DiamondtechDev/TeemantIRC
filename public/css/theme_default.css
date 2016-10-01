@@ -227,6 +227,15 @@
 .message .arrowout {
   color: #dc0f00;
 }
+.message.m_ctcp_response,
+.message.m_ctcp_request {
+  color: #39b7dd;
+  font-weight: bold;
+}
+.message.m_ctcp_response .asterisk,
+.message.m_ctcp_request .asterisk {
+  color: #05abe0;
+}
 .message.m_quit,
 .message.m_part,
 .message.m_kick {

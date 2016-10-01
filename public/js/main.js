@@ -321,6 +321,14 @@ let composer = {
 					element.innerHTML += "<span class='arrowin'>&#10145;</span>&nbsp;<span class='content'><span class='actionee nick'>"+sender+"</span>";
 					element.innerHTML += "&nbsp;"+message+"</span>";
 					break;
+				case "ctcp_response":
+					element.innerHTML += "<span class='asterisk'>&#8505;</span>&nbsp;CTCP response from <span class='actionee nick'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='content'>"+message+"</span>";
+					break;
+				case "ctcp_request":
+					element.innerHTML += "<span class='asterisk'>&#8505;</span>&nbsp;CTCP request to <span class='actionee nick'>"+sender+"</span>&nbsp;";
+					element.innerHTML += "<span class='content'>"+message+"</span>";
+					break;
 				default:
 					if(sender) {
 						element.innerHTML += "<span class='sender'>"+sender+"</span>&nbsp;<span class='content'>"+message+"</span>";
@@ -453,6 +461,17 @@ let commands = {
 			listargs[1] = buffer.name;
 		irc.socket.emit("userinput", {command: "privmsg", server: buffer.server, message: listargs.slice(2).join(" "), arguments: [listargs[1]]});
 	}, description: "<target> <message> - Sends a message to target.", aliases: ['privmsg', 'q', 'query', 'say']},
+
+	ctcp: {execute: function(buffer, handler, command, message, listargs) {
+		if(!listargs[1] || !listargs[2])
+			return handler.commandError(buffer, listargs[0].toUpperCase()+': Missing parameters!');
+		if(listargs[1] == '*')
+			listargs[1] = buffer.name;
+		
+		listargs[2] = listargs[2].toUpperCase();
+
+		irc.socket.emit("userinput", {command: "ctcp", server: buffer.server, message: listargs.slice(2).join(" "), arguments: listargs.slice(1)});
+	}, description: "<target> <type> [arguments] - Sends a CTCP request to target."},
 
 	notice: {execute: function(buffer, handler, command, message, listargs) {
 		if(!listargs[1] || !listargs[2])
@@ -1345,7 +1364,10 @@ class InputHandler {
 	}
 
 	keyUpHandle(e, key) {
-		if(key == 38 || key == 40 || key == 9) return;
+		if(key == 38 || key == 40) {
+			clientdom.input.selectionStart = clientdom.input.value.length;
+			clientdom.input.selectionEnd = clientdom.input.value.length;
+		} else if(key == 9) return;
 		let input = clientdom.input.value;
 		let word = input.split(/ |\n/).pop();
 
@@ -1360,6 +1382,7 @@ class InputHandler {
 				for(let n in this.tabWords)
 					this.tabWords[n] += ": ";
 		}
+
 	}
 
 	keyDownHandle(e, key) {
@@ -1374,8 +1397,6 @@ class InputHandler {
 
 			if(selection) {
 				clientdom.input.value = selection;
-				clientdom.input.selectionStart = selection.length;
-				clientdom.input.selectionEnd = selection.length;
 				this.tabCompleteReset();
 			}
 
@@ -1392,8 +1413,6 @@ class InputHandler {
 			if(!this.history[this.historyCaret])
 				selection = '';
 
-			clientdom.input.selectionStart = selection.length;
-			clientdom.input.selectionEnd = selection.length;
 			clientdom.input.value = selection;
 			this.tabCompleteReset();
 
