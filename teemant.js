@@ -8,8 +8,11 @@ let app = express();
 let router = express.Router();
 
 let pubdir = path.join(__dirname, "public");
+let pkg    = require(__dirname+"/package.json");
+
 let config = require(__dirname+'/server/config');
-let ircclient = require(__dirname+'/server/irc');
+let irclib = require(__dirname+'/server/teemant_irc');
+let webirc = require(__dirname+'/server/webirc');
 
 let port = config.server.port || 8080;
 
@@ -18,6 +21,15 @@ let runtime_stats = {
 };
 
 let connections = {};
+
+let customCTCPs = {
+	VERSION: function(data, connection) {
+		return "TeemantIRC ver. "+pkg.version+" - "+pkg.description+" - https://teemant.icynet.ml/";
+	},
+	SOURCE: function(data, connection) {
+		return "https://github.com/DiamondtechDev/TeemantIRC";
+	}
+}
 
 process.stdin.resume();
 
@@ -135,7 +147,9 @@ io.sockets.on('connection', function (socket) {
 
 		socket.emit('act_client', {type: 'connect_message', message: "Connecting to server..", error: false});
 
-		let newConnection = new ircclient(connectiondata, connections[socket.id].host);
+		let newConnection = new irclib.IRCConnection(connectiondata, config.client, 
+			{authenticationSteps: [new webirc.authenticator(connections[socket.id].host)], ctcps: customCTCPs});
+
 		newConnection.connect();
 
 		connections[socket.id][connectiondata.server] = newConnection;

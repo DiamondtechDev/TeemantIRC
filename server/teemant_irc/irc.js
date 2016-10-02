@@ -1,10 +1,8 @@
 let EventEmitter = require('events').EventEmitter;
 let net = require('net');
 let tls  = require('tls');
-let configuration = require(__dirname+"/config");
-let pkg = require(__dirname+"/../package.json");
+
 let parse = require(__dirname+"/parser");
-let webirc = require(__dirname+"/webirc");
 
 if (!String.prototype.format) {
 	String.prototype.format = function() {
@@ -39,7 +37,8 @@ class IRCConnectionHandler {
 				this.conn.write('{0} {1}'.format(data.command.toUpperCase(), data.arguments[0]));
 				break;
 			case "quit":
-				this.conn.write('{0} :{1}'.format(data.command.toUpperCase(), (data.message == '' ? configuration.client.default_quit_msg : data.message)));
+				this.conn.write('{0} :{1}'.format(data.command.toUpperCase(), (data.message == '' ? 
+					this.conn.globalConfig.default_quit_msg : data.message)));
 				break;
 			case "privmsg":
 				this.conn.write('PRIVMSG {0} :{1}'.format(data.arguments[0], data.message));
@@ -89,25 +88,18 @@ class IRCConnectionHandler {
 
 	ctcpManage(data) {
 		let line = data.trailing.replace(/\x01/g, '').trim().split(' ');
+
 		if(!line[0]) return;
+		line[0] = line[0].toUpperCase();
 
 		let resp = "\x01"+line[0]+" {0}\x01";
 
-		switch(line[0].toLowerCase()) {
-			case "ping":
-				if(line[1] != null && line[1] != '')
-					resp = resp.format(line.slice(1).join(' '));
-				else
-					resp = null;
-				break;
-			case "version":
-				resp = resp.format("TeemantIRC ver. {0} - {1} - https://teemant.icynet.ml/".format(pkg.version, pkg.description));
-				break;
-			case "source":
-				resp = resp.format("https://github.com/DiamondtechDev/TeemantIRC");
-				break;
-			default:
-				resp = null;
+		if(line[0] == "PING" && line[1] != null && line[1] != '') {
+			resp = resp.format(line.slice(1).join(' '));
+		} else if(this.conn.extras.ctcps && this.conn.extras.ctcps[line[0]] != null) {
+			resp = resp.format(this.conn.extras.ctcps[line[0]](data, this.conn));
+		} else {
+			resp = null;
 		}
 
 		if (resp != null)
@@ -418,23 +410,23 @@ class IRCConnectionHandler {
 }
 
 class IRCConnection extends EventEmitter {
-	constructor(providedInfo, userInfo) {
+	constructor(providedInfo, globalConfig, extras) {
 		super();
 
+		this.globalConfig = globalConfig;
+		this.extras = extras || { authenticationSteps: [], ctcps: {} };
 		this.config = {
 			nickname: "teemant",
-			username: configuration.client.username,
-			realname: configuration.client.realname,
+			username: globalConfig.username,
+			realname: globalConfig.realname,
 			server: "localhost",
 			port: 6667,
 			autojoin: [],
-			secure: configuration.client.secure_by_default,
+			secure: globalConfig.secure_by_default,
 			password: "",
 			address: "0.0.0.0",
-			rejectUnauthorized: configuration.tls.rejectUnauthorized
+			rejectUnauthorized: globalConfig.rejectUnauthorizedCertificates
 		};
-
-		this.userInfo = userInfo;
 
 		for(let a in providedInfo) {
 			this.config[a] = providedInfo[a];
@@ -472,8 +464,8 @@ class IRCConnection extends EventEmitter {
 			this.authenticate();
 		});
 
-		this.socket.setEncoding(configuration.client.encoding);
-		this.socket.setTimeout(configuration.client.timeout);
+		this.socket.setEncoding(this.globalConfig.encoding);
+		this.socket.setTimeout(this.globalConfig.timeout);
 
 		this.socket.on('error', (data) => {
 			this.emit('connerror', {type: "sock_error", message: "A socket error occured.", raw: data});
@@ -518,10 +510,12 @@ class IRCConnection extends EventEmitter {
 		if (this.config.password)
 			this.socket.write('PASS {0}\r\n'.format(this.config.password));
 		
-		let serverpass = webirc.get_password(this.config.address);
-
-		if(serverpass)
-			this.socket.write('WEBIRC {0} {1} {2} {3}\r\n'.format(serverpass, this.config.username, this.userInfo.hostname, this.userInfo.ipaddr));
+		if(this.extras.authenticationSteps) {
+			for(let i in this.extras.authenticationSteps) {
+				let step = this.extras.authenticationSteps[i];
+				step.authenticate(this);
+			}
+		}
 
 		this.socket.write('USER {0} 8 * :{1}\r\n'.format(this.config.username, this.config.realname));
 		this.socket.write('NICK {0}\r\n'.format(this.config.nickname));
@@ -534,7 +528,7 @@ class IRCConnection extends EventEmitter {
 		}
 
 		this.queue['close'] = true;
-		this.socket.write('QUIT :{0}\r\n'.format(message != null ? message : configuration.client.default_quit_msg));
+		this.socket.write('QUIT :{0}\r\n'.format(message != null ? message : this.globalConfig.default_quit_msg));
 	}
 
 	write(message) {

@@ -31,8 +31,22 @@ function get_password(server_ip) {
 	return null;
 }
 
+class WebIRCAuthenticator {
+	constructor(userInfo) {
+		this.userInfo = userInfo;
+	}
+
+	authenticate(connection) {
+		let serverpass = get_password(connection.config.address);
+		if(serverpass)
+			connection.socket.write('WEBIRC '+serverpass+' '+connection.config.username+
+				' '+this.userInfo.hostname+' '+this.userInfo.ipaddr+'\r\n');
+	}
+}
+
 module.exports = {
 	reload: reload,
+	authenticator: WebIRCAuthenticator,
 	get_password: get_password,
 	writeToFile: writeToFile
 }

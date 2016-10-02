@@ -10,6 +10,4 @@
 	secure_by_default=false
 	timeout=3000
 	encoding="utf-8"
-
-[tls]
-	rejectUnauthorized=false
+	rejectUnauthorizedCertificates=false

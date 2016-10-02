@@ -13,11 +13,3 @@ The client will be accessible at http://localhost:8080/
 ### WebIRC
 
 The server will look for passwords in `webirc.data.json`. The format is: `"server-ip-address": "server webirc password"`
-
-###The (non-complete) TODO List (of things left to do)
-
-* [NORMAL] CAP negotiation
-* [LOW] Better input
-* [LOW] irc:// URL scheme handling
-* [LOW] Connection presets
-* [LOW] More command handling (use /quote for non-integrated commands)
