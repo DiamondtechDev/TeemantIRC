@@ -12,4 +12,12 @@ The client will be accessible at http://localhost:8080/
 
 ### WebIRC
 
-The server will look for passwords in `webirc.data.json`. The format is: `"server-ip-address": "server webirc password"`
+The server will look for passwords in `webirc.data.json`. The format is: 
+```
+"server_hostname": {
+	"password": "server webirc password",
+	"cached_ip": null,
+	"last_update": 0
+}
+```
+It will DNS resolve `server_hostname` every `config.webirc.resolveInterval` seconds.

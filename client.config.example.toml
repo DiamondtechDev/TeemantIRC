@@ -11,3 +11,6 @@
 	timeout=3000
 	encoding="utf-8"
 	rejectUnauthorizedCertificates=false
+
+[webirc]
+	resolveInterval=43200

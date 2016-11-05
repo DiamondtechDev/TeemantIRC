@@ -1,13 +1,62 @@
-let dns = require("dns");
-let fs = require("fs");
-let path = require("path");
-let config = require(__dirname+'/config');
-let webirc_data_path = path.resolve(__dirname+'/../webirc.data.json');
+const dns = require("dns"),
+	  fs = require("fs"),
+	  path = require("path"),
+	  config = require(__dirname+'/config'),
+	  webirc_data_path = path.resolve(__dirname+'/../webirc.data.json');
 
 let webirc_data = {};
+let timeouts = {};
 
 function writeToFile() {
 	fs.writeFile(webirc_data_path, JSON.stringify(webirc_data, null, '\t'), function (err) {if (err) throw err;});
+}
+
+function resolveAddress(address) {
+	if(config.server.debug)
+		console.log("** WEBIRC ** Attempting to update IP for "+address);
+	let obj = webirc_data[address];
+	
+	if(!obj) return;
+
+	if((Date.now() - obj.last_update)/1000 < config.webirc.resolveInterval) {
+		let nextTime = (config.webirc.resolveInterval - (Date.now() - obj.last_update)/1000);
+		if(config.server.debug)
+			console.log("** WEBIRC ** "+address+" IP is "+obj.cached_ip+", refresh in "+nextTime+" seconds");
+
+		if(timeouts[address])
+			clearTimeout(timeouts[address]);
+
+		timeouts[address] = setTimeout(()=>{resolveAddress(address)}, nextTime*1000 );
+		return;
+	}
+
+	new Promise((resolve, reject) => {
+		dns.resolve(address, (err, data) => {
+			if(err!=null) return reject(err);
+			let ip = data.length > 0 ? data[0] : null;
+			if(ip) {
+				resolve(ip);
+			} else {
+				reject(new Error("no ips"));
+			}
+		});
+	}).then((data) => {
+		if(config.server.debug)
+			console.log("** WEBIRC ** Updated DNS for "+address+"; IP is now "+data);
+		webirc_data[address].last_update = Date.now();
+		webirc_data[address].cached_ip = data;
+		writeToFile();
+		
+		if(timeouts[address])
+			clearTimeout(timeouts[address]);
+
+		timeouts[address] = setTimeout(()=>{resolveAddress(address)}, config.webirc.resolveInterval*1000);
+	}, (err) => {
+		if(timeouts[address])
+			clearTimeout(timeouts[address]);
+
+		timeouts[address] = setTimeout(()=>{resolveAddress(address)}, (config.webirc.resolveInterval+60)*1000);
+	});
 }
 
 function reload() {
@@ -22,13 +71,20 @@ function reload() {
 	} catch(e) {
 		writeToFile();
 	}
+
+	for(let adr in webirc_data) {
+		resolveAddress(adr);
+	}
 }
 
 function get_password(server_ip) {
-	if(webirc_data[server_ip] != null)
-		return webirc_data[server_ip];
+	let ip = null;
+	for(let a in webirc_data) {
+		if(webirc_data[a].cached_ip == server_ip)
+			ip = webirc_data[a];
+	}
 
-	return null;
+	return ip;
 }
 
 class WebIRCAuthenticator {
@@ -39,7 +95,7 @@ class WebIRCAuthenticator {
 	authenticate(connection) {
 		let serverpass = get_password(connection.config.address);
 		if(serverpass)
-			connection.socket.write('WEBIRC '+serverpass+' '+connection.config.username+
+			connection.socket.write('WEBIRC '+serverpass.password+' '+connection.config.username+
 				' '+this.userInfo.hostname+' '+this.userInfo.ipaddr+'\r\n');
 	}
 }
