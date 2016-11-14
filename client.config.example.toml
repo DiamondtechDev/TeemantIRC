@@ -1,16 +1,23 @@
 [server]
+	# HTTP server port
 	port=8080
+	# Debug information
 	debug=true
+	# Print statistics about the currently running instance periodically
+	printStats=true
 
 [client]
+	# IRC settings
 	username="teemant"
 	realname="A Teemant User"
 	default_quit_msg="Teemant IRC"
 	default_part_msg="Bye!"
+	# Socket settings
 	secure_by_default=false
 	timeout=3000
 	encoding="utf-8"
 	rejectUnauthorizedCertificates=false
 
 [webirc]
+	enabled=true
 	resolveInterval=43200

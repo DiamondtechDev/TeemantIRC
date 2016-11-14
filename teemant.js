@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 'use strict';
-let express = require("express");
-let path = require("path");
-let sockio = require("socket.io");
-let dns = require("dns");
-let app = express();
-let router = express.Router();
+const express = require("express"),
+	  path = require("path"),
+	  sockio = require("socket.io"),
+	  dns = require("dns"),
+	  app = express(),
+	  router = express.Router(),
 
-let pubdir = path.join(__dirname, "public");
-let pkg    = require(__dirname+"/package.json");
+	  pubdir = path.join(__dirname, "public"),
+	  pkg    = require(__dirname+"/package.json"),
 
-let config = require(__dirname+'/server/config');
+	  config = require(__dirname+'/server/config'),
+	  logger = require(__dirname+'/server/logger'),
+
+	  port = config.server.port || 8080;
+
 let irclib = require(__dirname+'/server/teemant_irc');
 let webirc = require(__dirname+'/server/webirc');
-
-let port = config.server.port || 8080;
 
 let runtime_stats = {
 	connectionsMade: 0
@@ -45,31 +47,12 @@ app.use('/', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
 app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
 app.use('/', router);
 
-function printRuntimeStats() {
-	let date = new Date();
-	let users = 0;
-	let servers = 0;
-	let serversPerUser = 0;
+const io = sockio.listen(app.listen(port, function() {
+	logger.log("*** Listening on http://localhost:" + port + "/");
 
-	for(let uid in connections) {
-		let ca = connections[uid];
-		users += 1;
-		for(let snam in ca) {
-			if(!snam) continue;
-			if(snam == "host") continue;
-			servers += 1;
-		}
-	}
-
-	if(users != 0) // Don't divide by zero lmao
-		serversPerUser = servers/users;
-
-	console.log(date+": Currently connected users: "+users+"; IRC server connections: "+servers+"; Average servers per user: "+serversPerUser+"; Total connections made: "+runtime_stats.connectionsMade);
-}
-
-let io = sockio.listen(app.listen(port, function() {
-	console.log("*** Listening on http://localhost:" + port + "/");
-	setInterval(printRuntimeStats, 3600000);
+	setInterval(() => {
+		logger.printRuntimeStats(runtime_stats, connections);
+	}, 3600000);
 }));
 
 function resolveHostname(ipaddr) {
@@ -89,8 +72,7 @@ io.sockets.on('connection', function (socket) {
 	if(userip.indexOf('::ffff:') == 0)
 		userip = userip.substring(7);
 
-	if(config.server.debug)
-		console.log('clientID: '+socket.id+' from: ', userip);
+	logger.debugLog('clientID: '+socket.id+' from: ', userip);
 
 	// New object for connections
 	connections[socket.id] = {
@@ -106,12 +88,10 @@ io.sockets.on('connection', function (socket) {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
 	}).catch((err) => {
-		if(config.server.debug)
-			console.log("Host resolve for "+socket.id+" failed: ", err); 
+		logger.debugLog("Host resolve for "+socket.id+" failed: ", err); 
 	});
 
-	if(config.server.debug)
-		console.log("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
+	logger.debugLog("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
 
 	socket.on('disconnect', function() {
 		for (let d in connections[socket.id]) {
@@ -122,12 +102,11 @@ io.sockets.on('connection', function (socket) {
 
 		delete connections[socket.id];
 
-		if(config.server.debug)
-			console.log('clientID: '+socket.id+' disconnect');
+		logger.debugLog('clientID: '+socket.id+' disconnect');
 	});
 
 	socket.on('error', (e) => {
-		console.log(e);
+		logger.errorLog(e, "Socket error");
 	});
 
 	socket.on('userinput', (data) => {
@@ -135,20 +114,23 @@ io.sockets.on('connection', function (socket) {
 		if(!serv) return;
 		if(serv.authenticated == false) return;
 
-		if(config.server.debug)
-			console.log("["+socket.id+"] ->", data);
+		logger.debugLog("["+socket.id+"] ->", data);
 
 		serv.handler.handleUserLine(data);
 	})
 
 	socket.on('irc_create', function(connectiondata) {
-		if(config.server.debug)
-			console.log(socket.id+" created irc connection: ", connectiondata);
+		logger.debugLog(socket.id+" created irc connection: ", connectiondata);
 
 		socket.emit('act_client', {type: 'connect_message', message: "Connecting to server..", error: false});
 
 		let newConnection = new irclib.IRCConnection(connectiondata, config.client, 
-			{authenticationSteps: [new webirc.authenticator(connections[socket.id].host)], ctcps: customCTCPs});
+			{
+				authenticationSteps: [
+					new webirc.authenticator(connections[socket.id].host)
+				], 
+				ctcps: customCTCPs
+			});
 
 		newConnection.connect();
 
@@ -164,17 +146,16 @@ io.sockets.on('connection', function (socket) {
 
 		if(config.server.debug) {
 			newConnection.on('line', function(line) {
-				console.log("["+socket.id+"] <-", line);
+				logger.debugLog("["+socket.id+"] <-", line);
 			});
 
 			newConnection.on('debug_log', function(data) {
-				console.log("["+socket.id+"] <-", data);
+				logger.debugLog("["+socket.id+"] <-", data);
 			});
 		}
 
 		newConnection.on('connerror', (data) => {
-			if(config.server.debug)
-				console.log(data);
+			logger.debugLog(data);
 
 			if(newConnection.authenticated == false)
 				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
@@ -186,8 +167,7 @@ io.sockets.on('connection', function (socket) {
 		});
 
 		newConnection.on('closed', (data) => {
-			if(config.server.debug)
-				console.log(data);
+			logger.debugLog(data);
 
 			if(newConnection.authenticated == false)
 				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
@@ -199,13 +179,13 @@ io.sockets.on('connection', function (socket) {
 });
 
 process.on('SIGINT', () => {
-	console.log('!!! Received SIGINT; Terminating all IRC connections and exiting.. !!!');
+	logger.log('!!! Received SIGINT; Terminating all IRC connections and exiting.. !!!');
+	logger.printRuntimeStats(runtime_stats, connections);
 	for(let c in connections) {
 		for(let ircconn in connections[c]) {
 			if(connections[c][ircconn].ipaddr) continue;
 			connections[c][ircconn].disconnect();
 		}
 	}
-	printRuntimeStats();
 	process.exit();
 });

@@ -1,8 +1,7 @@
-let EventEmitter = require('events').EventEmitter;
-let net = require('net');
-let tls  = require('tls');
-
-let parse = require(__dirname+"/parser");
+const EventEmitter = require('events').EventEmitter,
+	  net = require('net'),
+	  tls  = require('tls'),
+	  parse = require(__dirname+"/parser");
 
 if (!String.prototype.format) {
 	String.prototype.format = function() {
@@ -96,6 +95,8 @@ class IRCConnectionHandler {
 
 		if(line[0] == "PING" && line[1] != null && line[1] != '') {
 			resp = resp.format(line.slice(1).join(' '));
+		} else if(line[0] == "CLIENTINFO") {
+			resp = resp.format("CLIENTINFO PING "+Object.keys(this.conn.extras.ctcps).join(" "));
 		} else if(this.conn.extras.ctcps && this.conn.extras.ctcps[line[0]] != null) {
 			resp = resp.format(this.conn.extras.ctcps[line[0]](data, this.conn));
 		} else {
@@ -163,7 +164,13 @@ class IRCConnectionHandler {
 				}
 				break;
 			case "JOIN":
-				this.conn.emit('pass_to_client', {type: "event_join_channel", user: line.user, channel: line.trailing, server: serverName });
+				if(line.trailing) {
+					this.conn.emit('pass_to_client', {type: "event_join_channel", user: line.user, channel: line.trailing, server: serverName });
+				} else {
+					for(let i in line.arguments) {
+						this.conn.emit('pass_to_client', {type: "event_join_channel", user: line.user, channel: line.arguments[i], server: serverName });
+					}
+				}
 				break;
 			case "PART":
 				this.conn.emit('pass_to_client', {type: "event_part_channel", user: line.user, channel: line.arguments[0], reason: line.trailing, server: serverName });
@@ -195,6 +202,7 @@ class IRCConnectionHandler {
 
 				if(Object.keys(this.conn.queue["names"]).length == 0)
 					delete this.conn.queue["names"];
+
 				break;
 			case "PRIVMSG":
 				if(line.trailing.indexOf('\x01') == 0 && line.trailing.indexOf('\x01ACTION') != 0)
@@ -389,8 +397,10 @@ class IRCConnectionHandler {
 			case "318":
 				if(!this.conn.queue.whois || !this.conn.queue.whois[line.arguments[1]])
 					return;
+
 				this.conn.emit('pass_to_client', {type: "whoisResponse", whois: this.conn.queue.whois[line.arguments[1]], 
 								server: serverName, from: realServerName});
+				
 				delete this.conn.queue.whois[line.arguments[1]];
 				break;
 			case "321":
