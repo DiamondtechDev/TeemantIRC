@@ -82,6 +82,9 @@ a:hover {
   box-shadow: inset 4px 4px 8px #00d1ea;
   color: #fff;
 }
+.ircclient #chat .ircwrapper .toolbar .tabby .tab.hot {
+  animation: hotTab 1s linear infinite;
+}
 .ircclient #chat .ircwrapper .toolbar .tabby .tab #unread {
   background-color: #bf0000;
   border: 1px solid #b00;
@@ -474,4 +477,24 @@ a:hover {
 .message .irc-underline,
 .topicbar .irc-underline {
   text-decoration: underline;
+}
+@-moz-keyframes hotTab {
+  50% {
+    background-color: #3ee4ff;
+  }
+}
+@-webkit-keyframes hotTab {
+  50% {
+    background-color: #3ee4ff;
+  }
+}
+@-o-keyframes hotTab {
+  50% {
+    background-color: #3ee4ff;
+  }
+}
+@keyframes hotTab {
+  50% {
+    background-color: #3ee4ff;
+  }
 }

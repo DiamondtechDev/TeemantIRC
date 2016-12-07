@@ -147,7 +147,7 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
-irc.whoisMessage = function(whoisData, buffer) {
+function whoisMessage(whoisData, buffer) {
 	let messages = [];
 	for(let key in whoisData) {
 		switch(key) {
@@ -248,6 +248,15 @@ function linkify(text) {
 		return '<a href="' + href + '" target="_blank" rel="nofollow">' + url + '</a>';
 	});
 	return parsed;
+}
+
+function serialize(obj) {
+	let str = [];
+	for(let p in obj)
+		if (obj.hasOwnProperty(p)) {
+			str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+	}
+	return str.join("&");
 }
 
 function removeClass(element, cl) {
@@ -373,6 +382,54 @@ let composer = {
 		btn.setAttribute('id', 'theme-'+name);
 
 		return btn;
+	},
+	embedURL: function(server, port, defaultNick, useSSL, hideServerData, channels) {
+		let builder = window.location.origin + "/";
+		let params = {};
+		let final_channels = [];
+
+		if(server)
+			builder += server + "/";
+
+		if(channels)
+			channels = channels.trim();
+
+		if(defaultNick)
+			params.nickname = defaultNick;
+
+		if(port && port != 6667)
+			params.port = port;
+
+		if(useSSL)
+			params.secure = 1;
+
+		if(hideServerData)
+			params.server_data = 0;
+
+		if(Object.keys(params).length > 0)
+			builder += "?" + serialize(params);
+
+		if(channels) {
+			if(channels.indexOf(",")) {
+				let tmp = channels.split(',');
+				for(let i in tmp) {
+					tmp[i] = tmp[i].trim();
+					
+					if(tmp[i].indexOf('#') != 0)
+						tmp[i] = "#"+tmp[i];
+
+					final_channels.push(tmp[i]);
+				}
+			} else {
+				if(channels.indexOf('#') != 0)
+					channels = '#'+channels; 
+				final_channels.push(channels);
+			}
+
+			builder += final_channels.join(',');
+		}
+
+		return builder;
 	}
 }
 
@@ -384,6 +441,16 @@ let composer = {
 
 // commandName: {execute: function(buffer, handler, command, message, listargs) {}, description: ""}
 let commands = {
+	embed: {execute: function(buffer, handler, command, message, listargs) {
+		let data = irc.auther.getDataFromForm();
+		let url = "Couldn't compose URL!";
+
+		if(data)
+			url = composer.embedURL(data.server, data.port, data.nickname, data.secure, true, data.autojoin.join(','));
+
+		buffer.addMessage(url, null, "help");
+	}, description: "- Embed URL for the current connection"},
+
 	join: {execute: function(buffer, handler, command, message, listargs) {
 		if (!listargs[1]) {
 			if(!buffer.alive) {
@@ -794,6 +861,15 @@ class Tab {
 		}
 	}
 
+	setHot(hot) {
+		if(this.element) {
+			if(hot)
+				addClass(this.element, "hot");
+			else
+				removeClass(this.element, "hot");
+		}
+	}
+
 	setUnreadCount(count) {
 		if(this.element) {
 			let counter = this.element.querySelector('#unread');
@@ -834,6 +910,7 @@ class Buffer {
 		this.type = type;
 		this.active = false;
 		this.alive = true;
+		this.hot = false;
 
 		if(type != "applet") {
 			this.tab = new Tab(this);
@@ -861,6 +938,9 @@ class Buffer {
 			addClass(clientdom.chat, 'vnicks');
 			this.nicklist.render();
 		}
+
+		if(this.hot)
+			this.setHotStatus(false);
 
 		if(this.topic != null && this.topic != "") {
 			addClass(clientdom.chat, 'vtopic');
@@ -897,6 +977,12 @@ class Buffer {
 
 		if(this.active)
 			clientdom.letterbox.innerHTML = "";
+	}
+
+	setHotStatus(hot) {
+		this.hot = hot;
+		if(this.tab)
+			this.tab.setHot(hot);
 	}
 
 	appendMessage(meta) {
@@ -940,8 +1026,12 @@ class Buffer {
 			if(irc.serverData[this.server]) {
 				let mynick = irc.serverData[this.server].my_nick;
 				if((type == "privmsg" || type == "notice" || type == "action") && 
-					message.toLowerCase().indexOf(mynick.toLowerCase()) != -1 && sender != mynick)
-					console.log("TODO: notify user of mentioned");
+					message.toLowerCase().indexOf(mynick.toLowerCase()) != -1 && sender != mynick) {
+					// TODO: notify user of mentioned
+					
+					if(!this.active)
+						this.setHotStatus(true);
+				}
 			}
 		}
 
@@ -1021,12 +1111,55 @@ class ThemeSelector {
 	}
 }
 
-class Settings extends Buffer {
-	constructor() {
-		super("", "settings", "Settings", "applet");
+class AppletBuffer extends Buffer {
+	constructor(appletName, title, frame) {
+		super("", appletName, title, "applet");
 		this.tab = null;
 		this.isOpen = false;
 		this.timeout = null;
+		this.frame = frame;
+	}
+
+	closeBuffer() {
+		irc.chat.closeBuffer(this);
+		this.tab = null;
+		this.isOpen = false;
+	}
+
+	open() {
+		if(this.isOpen) {
+			irc.chat.render(this);
+			return;
+		}
+
+		this.tab = new Tab(this);
+		this.tab.renderTab();
+		irc.chat.buffers.push(this);
+		irc.chat.render(this);
+		this.isOpen = true;
+	}
+
+	addMessage(message, sender, type, time) {
+		// Don't send messages to any applet buffer
+		return;
+	}
+
+	switchOff() {
+		this.active = false;
+		this.tab.setActive(false);
+		this.frame.style.display = "none";
+	}
+
+	render() {
+		this.active = true;
+		this.tab.setActive(true);
+		this.frame.style.display = "block";
+	}
+}
+
+class Settings extends AppletBuffer {
+	constructor() {
+		super("settings", "Settings", clientdom.settings.frame);
 
 		this.themeSelection = "";
 
@@ -1048,25 +1181,6 @@ class Settings extends Buffer {
 			irc.config.theme = this.themeSelection;
 			this.themeSelector.set_active_selection(this.themeSelection);
 		}
-	}
-
-	open() {
-		if(this.isOpen) {
-			irc.chat.render(this);
-			return;
-		}
-
-		this.tab = new Tab(this);
-		this.tab.renderTab();
-		irc.chat.buffers.push(this);
-		irc.chat.render(this);
-		this.isOpen = true;
-	}
-
-	closeBuffer() {
-		irc.chat.closeBuffer(this);
-		this.tab = null;
-		this.isOpen = false;
 	}
 
 	saveSpecified() {
@@ -1137,25 +1251,12 @@ class Settings extends Buffer {
 		}
 	}
 
-	addMessage(message, sender, type, time) {
-		// Don't send messages to the settings buffer
-		return;
-	}
-
-	switchOff() {
-		this.active = false;
-		this.tab.setActive(false);
-		clientdom.settings.frame.style.display = "none";
-	}
-
 	render() {
-		this.active = true;
-		this.tab.setActive(true);
+		super.render();
 		clientdom.chat.className = "chatarea";
 		clientdom.nicklist.innerHTML = "";
 		clientdom.topicbar.innerHTML = "";
 		clientdom.letterbox.innerHTML = "";
-		clientdom.settings.frame.style.display = "block";
 		irc.chat.changeTitle("TeemantIRC - Settings");
 	}
 }
@@ -1213,6 +1314,13 @@ class IRCConnector {
 					if(window.validators.iporhost(value))
 						clientdom.connector.server.value = value;
 					break;
+				case "server_data":
+				case "extra":
+				case "extras":
+				case "connection":
+					if(value == "false" || value == "0")
+						clientdom.connector.server_data.style.display = "none";
+					break;
 				case "port":
 					try {
 						let ppp = parseInt(value);
@@ -1240,9 +1348,7 @@ class IRCConnector {
 		}
 	}
 
-	validateForm(event) {
-		event.preventDefault();
-
+	getDataFromForm() {
 		let nickname = clientdom.connector.nickname.value;
 		let password = clientdom.connector.password.value;
 		let channel = clientdom.connector.channel.value;
@@ -1296,12 +1402,21 @@ class IRCConnector {
 		if(!clientdom.connector.pwtrigger.checked)
 			password = "";
 
-		irc.socket.emit('irc_create', {nickname: 	nickname,
-									   autojoin: 	channel,
-									   server: 		server,
-									   port: 		port,
-									   password: 	password,
-									   secure: 		clientdom.connector.secure.checked });
+		return {nickname: 	nickname,
+			   autojoin: 	channel,
+			   server: 		server,
+			   port: 		port,
+			   password: 	password,
+			   secure: 		clientdom.connector.secure.checked }
+	}
+
+	validateForm(event) {
+		event.preventDefault();
+
+		let data = this.getDataFromForm();
+		if(!data) return;
+
+		irc.socket.emit('irc_create', data);
 		return true;
 	}
 
@@ -1498,10 +1613,12 @@ class InputHandler {
 class IRCChatWindow {
 	constructor() {
 		this.buffers = [];
-		clientdom.frame.style.display = "none";
 		this.firstServer = true;
 		this.currentBuffer = null;
 		this.input_handler = new InputHandler();
+
+		clientdom.frame.style.display = "none";
+
 		clientdom.smsctrig.onclick = (e) => {
 			toggleClass(clientdom.chat, "vopentrig");
 		}
@@ -1520,6 +1637,7 @@ class IRCChatWindow {
 		irc.auther.authMessage("Disconnected", true);
 		clientdom.frame.style.display = "none";
 		this.firstServer = true;
+		window.onbeforeunload = null;
 	}
 
 	getBufferByName(buffername) {
@@ -1885,6 +2003,11 @@ function parseURL() {
 	irc.auther.fillFormFromURI();
 }
 
+function stopWarnings() {
+	if(Object.keys(irc.serverData).length == 0)
+		window.onbeforeunload = null;
+}
+
 window.onpopstate = parseURL;
 
 window.onresize = function() {
@@ -1905,6 +2028,7 @@ window.onload = function() {
 	clientdom.settings['save'] = clientdom.settings.frame.querySelector('#save_settings');
 	clientdom.settings['saveStatus'] = clientdom.settings.frame.querySelector('#settings_status');
 	clientdom.connector['frame'] = irc.primaryFrame.querySelector('#authdialog');
+	clientdom.connector['server_data'] = clientdom.connector.frame.querySelector('.server_data');
 	clientdom.connector['messenger'] = clientdom.connector.frame.querySelector('#connmsg');
 	clientdom.connector['form'] = clientdom.connector.frame.querySelector('#IRCConnector');
 	clientdom.connector['nickname'] = clientdom.connector.form.querySelector('#nickname');
@@ -1979,6 +2103,10 @@ window.onload = function() {
 					serv.addMessage("You are no longer talking on this server.", null, "error");
 					serv.setAliveStatus(false);
 				}
+				
+				if(irc.serverData[data.server])
+					delete irc.serverData[data.server];
+				stopWarnings();
 				break;
 			case "message":
 				if(data.to == irc.serverData[data.server].my_nick) {
@@ -2029,7 +2157,7 @@ window.onload = function() {
 				irc.auther.authMessage(data.message, data.error);
 				break;
 			case "whoisResponse":
-				irc.whoisMessage(data.whois, irc.chat.getActiveBuffer());
+				whoisMessage(data.whois, irc.chat.getActiveBuffer());
 				break;
 			case "listedchan":
 				irc.chat.messageBuffer(data.server, data.server, {message: "<span class='channel'>"+data.channel+"</span>"+

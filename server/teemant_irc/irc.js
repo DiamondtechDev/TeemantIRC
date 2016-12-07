@@ -257,12 +257,16 @@ class IRCConnectionHandler {
 			case "376":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "motd", message: line.trailing, server: serverName, from: realServerName});
 				break;
-			case "351":
+			case "006":
+			case "007":
 			case "251":
+			case "255":
+			case "270":
 			case "290":
 			case "292":
+			case "323":
+			case "351":
 			case "381":
-			case "255":
 				this.conn.emit('pass_to_client', {type: "server_message", messageType: "regular", message: line.trailing, server: serverName, from: realServerName});
 				break;
 			case "252":

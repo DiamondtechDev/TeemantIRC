@@ -460,3 +460,23 @@
 .topicbar .irc-underline {
   text-decoration: underline;
 }
+@-moz-keyframes hotTab {
+  50% {
+    background-color: #6eebff;
+  }
+}
+@-webkit-keyframes hotTab {
+  50% {
+    background-color: #6eebff;
+  }
+}
+@-o-keyframes hotTab {
+  50% {
+    background-color: #6eebff;
+  }
+}
+@keyframes hotTab {
+  50% {
+    background-color: #6eebff;
+  }
+}

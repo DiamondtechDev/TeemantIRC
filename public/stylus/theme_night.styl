@@ -68,6 +68,8 @@ a:hover
                     background-size: contain
                 .tabby
                     .tab
+                        &.hot
+                            animation: hotTab 1s linear infinite;
                         background-color: #00bfde
                         border: 1px solid #0092a5
                         box-shadow inset 4px 4px 8px #00d1ea
@@ -295,3 +297,7 @@ a:hover
         font-style: italic
     .irc-underline
         text-decoration: underline
+
+@keyframes hotTab
+    50%
+        background-color: #3ee4ff

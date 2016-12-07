@@ -222,7 +222,7 @@ body {
   width: 25px;
   display: inline-block;
 }
-.ircclient #chat .ircwrapper .chatarea .settings {
+.ircclient #chat .ircwrapper .chatarea .applet_default {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -233,6 +233,11 @@ body {
   min-width: 360px;
   margin: auto;
   overflow: auto;
+}
+.ircclient #chat .ircwrapper .chatarea .applet_default .grade1,
+.ircclient #chat .ircwrapper .chatarea .applet_default .grade2,
+.ircclient #chat .ircwrapper .chatarea .applet_default .grade3 {
+  text-align: left;
 }
 .ircclient #chat .ircwrapper .chatarea .settings .theme_button {
   width: 120px;
@@ -256,11 +261,6 @@ body {
   width: 100%;
   text-align: center;
   display: block;
-}
-.ircclient #chat .ircwrapper .chatarea .settings .grade1,
-.ircclient #chat .ircwrapper .chatarea .settings .grade2,
-.ircclient #chat .ircwrapper .chatarea .settings .grade3 {
-  text-align: left;
 }
 .ircclient #chat .ircwrapper .chatarea.vnicks .nicklist {
   display: block;
