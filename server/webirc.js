@@ -1,9 +1,9 @@
-const dns = require("dns"),
-	  fs = require("fs"),
-	  path = require("path"),
-	  config = require(__dirname+'/config'),
-	  logger = require(__dirname+'/logger'),
-	  webirc_data_path = path.resolve(__dirname+'/../webirc.data.json');
+const dns = require('dns');
+const fs = require('fs');
+const path = require('path');
+const config = require(__dirname+'/config');
+const logger = require(__dirname+'/logger');
+const webirc_data_path = path.resolve(__dirname+'/../webirc.data.json');
 
 let webirc_data = {};
 let timeouts = {};
@@ -16,11 +16,11 @@ function timeoutRefresh(address, seconds) {
 	if(timeouts[address])
 		clearTimeout(timeouts[address]);
 
-	timeouts[address] = setTimeout(()=>{resolveAddress(address)}, seconds*1000);
+	timeouts[address] = setTimeout(()=>{resolveAddress(address);}, seconds*1000);
 }
 
 function resolveAddress(address, force) {
-	logger.debugLog("** WEBIRC ** Attempting to update IP for "+address);
+	logger.debugLog('** WEBIRC ** Attempting to update IP for '+address);
 	let obj = webirc_data[address];
 	
 	if(!obj) return;
@@ -28,7 +28,7 @@ function resolveAddress(address, force) {
 	if((Date.now() - obj.last_update)/1000 < config.webirc.resolveInterval && !force) {
 		let nextTime = (config.webirc.resolveInterval - (Date.now() - obj.last_update)/1000);
 		
-		logger.debugLog("** WEBIRC ** "+address+" IP is "+obj.cached_ip+", refresh in "+nextTime+" seconds");
+		logger.debugLog('** WEBIRC ** {0} IP is {1}, refresh in {2} seconds'.format(address, obj.cached_ip, Math.floor(nextTime)));
 
 		return timeoutRefresh(address, nextTime);
 	}
@@ -40,11 +40,11 @@ function resolveAddress(address, force) {
 			if(ip) {
 				resolve(ip);
 			} else {
-				reject(new Error("no ips"));
+				reject(new Error('no ips'));
 			}
 		});
 	}).then((data) => {
-		logger.debugLog("** WEBIRC ** Updated DNS for "+address+"; IP is now "+data);
+		logger.debugLog('** WEBIRC ** Updated DNS for {0}; IP is now {1}'.format(address, data));
 
 		webirc_data[address].last_update = Date.now();
 		webirc_data[address].cached_ip = data;
@@ -52,7 +52,7 @@ function resolveAddress(address, force) {
 		writeToFile();
 		timeoutRefresh(address, config.webirc.resolveInterval);
 	}, (err) => {
-		logger.debugLog("** WEBIRC ** Failed to updated DNS for "+address+"; IP is still "+webirc_data[address].cached_ip);
+		logger.debugLog('** WEBIRC ** Failed to updated DNS for {0}; IP is still {1}'.format(address, webirc_data[address].cached_ip));
 
 		timeoutRefresh(address, (config.webirc.resolveInterval+60));
 	});
@@ -96,8 +96,8 @@ class WebIRCAuthenticator {
 	authenticate(connection) {
 		let serverpass = get_password(connection.config.address);
 		if(serverpass)
-			connection.socket.write('WEBIRC '+serverpass.password+' '+connection.config.username+
-				' '+this.userInfo.hostname+' '+this.userInfo.ipaddr+'\r\n');
+			connection.socket.write('WEBIRC {0} {1} {2} {3}\r\n'.format(serverpass.password, connection.config.username, 
+				this.userInfo.hostname, this.userInfo.ipaddr));
 	}
 }
 
@@ -109,7 +109,7 @@ module.exports = {
 };
 
 process.on('SIGUSR1', () => {
-	logger.log("\n!!! Received SIGUSR1; Reloading webirc data.. !!!\n");
+	logger.log('\n!!! Received SIGUSR1; Reloading webirc data.. !!!\n');
 	reload(true);
 });
 

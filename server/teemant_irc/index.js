@@ -4,4 +4,4 @@ let parser = require(__dirname+'/parser.js');
 module.exports = {
 	IRCConnection: connector,
 	Parser: parser
-}
+};

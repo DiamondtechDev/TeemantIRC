@@ -6,7 +6,8 @@ This application requires [node.js](https://nodejs.org/) to be installed.
 
 1. Install the dependencies `npm install`
 2. Copy the configuration `cp client.config.example.toml client.config.toml`
-3. Run the server `./teemant.js`
+3. Build the project using `gulp`
+4. Run the server `./teemant.js`
 
 The client will be accessible at http://localhost:8080/
 

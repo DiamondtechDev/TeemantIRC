@@ -1,19 +1,28 @@
 #!/usr/bin/env node
 'use strict';
-const express = require("express"),
-	  path = require("path"),
-	  sockio = require("socket.io"),
-	  dns = require("dns"),
-	  app = express(),
-	  router = express.Router(),
+const express = require('express');
+const path = require('path');
+const sockio = require('socket.io');
+const dns = require('dns');
+const app = express();
+const router = express.Router();
 
-	  pubdir = path.join(__dirname, "public"),
-	  pkg    = require(__dirname+"/package.json"),
+const pubdir = path.join(__dirname, 'build');
+const pkg    = require(__dirname+'/package.json');
 
-	  config = require(__dirname+'/server/config'),
-	  logger = require(__dirname+'/server/logger'),
+const config = require(__dirname+'/server/config');
+const logger = require(__dirname+'/server/logger');
 
-	  port = config.server.port || 8080;
+const port = config.server.port || 8080;
+
+if (!String.prototype.format) {
+	String.prototype.format = function() {
+		var args = arguments;
+		return this.replace(/{(\d+)}/g, function(match, number) { 
+			return typeof args[number] != undefined ? args[number] : match;
+		});
+	};
+}
 
 let irclib = require(__dirname+'/server/teemant_irc');
 let webirc = require(__dirname+'/server/webirc');
@@ -26,29 +35,36 @@ let connections = {};
 
 let customCTCPs = {
 	VERSION: function(data, connection) {
-		return "TeemantIRC ver. "+pkg.version+" - "+pkg.description+" - https://teemant.icynet.ml/";
+		return 'TeemantIRC ver. {0} - {1} - https://teemant.icynet.ml/'.format(pkg.version, pkg.description);
 	},
 	SOURCE: function(data, connection) {
-		return "https://github.com/DiamondtechDev/TeemantIRC";
+		return 'https://github.com/DiamondtechDev/TeemantIRC';
 	}
-}
+};
 
 process.stdin.resume();
 
-router.get("/", function(req, res){
-	res.sendFile(pubdir+"/index.html");
+router.get('/', function(req, res){
+	res.sendFile(pubdir+'/document/index.html');
 });
 
-router.get("/:server", function(req, res){
-	res.sendFile(pubdir+"/index.html");
+router.get('/:server', function(req, res){
+	res.sendFile(pubdir+'/document/index.html');
 });
 
 app.use('/', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
 app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
+
+app.use('/', express.static(pubdir+'/icons', { maxAge: 365*24*60*60*1000 }));
+app.use('/:server', express.static(pubdir+'/icons', { maxAge: 365*24*60*60*1000 }));
+
+app.use('/', express.static(__dirname+'/static', { maxAge: 365*24*60*60*1000 }));
+app.use('/:server', express.static(pubdir+'/static', { maxAge: 365*24*60*60*1000 }));
+
 app.use('/', router);
 
 const io = sockio.listen(app.listen(port, function() {
-	logger.log("*** Listening on http://localhost:" + port + "/");
+	logger.log('*** Listening on http://localhost:{0}/'.format(port));
 
 	setInterval(() => {
 		logger.printRuntimeStats(runtime_stats, connections);
@@ -67,12 +83,12 @@ function resolveHostname(ipaddr) {
 
 io.sockets.on('connection', function (socket) {
 	let userip = socket.handshake.headers['x-real-ip'] || socket.handshake.headers['x-forwarded-for'] || 
-				 socket.request.connection._peername.address || "127.0.0.1";
+				 socket.request.connection._peername.address || '127.0.0.1';
 
 	if(userip.indexOf('::ffff:') == 0)
 		userip = userip.substring(7);
 
-	logger.debugLog('clientID: '+socket.id+' from: ', userip);
+	logger.debugLog('clientID: {0} from: {1}'.format(socket.id, userip));
 
 	// New object for connections
 	connections[socket.id] = {
@@ -80,7 +96,7 @@ io.sockets.on('connection', function (socket) {
 			ipaddr: userip,
 			hostname: userip
 		}
-	}
+	};
 
 	// Get the hostname of the connecting user
 	let hostQuery = resolveHostname(userip);
@@ -88,10 +104,10 @@ io.sockets.on('connection', function (socket) {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
 	}).catch((err) => {
-		logger.debugLog("Host resolve for "+socket.id+" failed: ", err); 
+		logger.debugLog('Host resolve for {0} failed: {1}'.format(socket.id, err)); 
 	});
 
-	logger.debugLog("Hostname of "+socket.id+" was determined to be "+connections[socket.id].host.hostname);
+	logger.debugLog('Hostname of {0} was determined to be {1}'.format(socket.id, connections[socket.id].host.hostname));
 
 	socket.on('disconnect', function() {
 		for (let d in connections[socket.id]) {
@@ -102,11 +118,11 @@ io.sockets.on('connection', function (socket) {
 
 		delete connections[socket.id];
 
-		logger.debugLog('clientID: '+socket.id+' disconnect');
+		logger.debugLog('clientID: {0} disconnect'.format(socket.id));
 	});
 
 	socket.on('error', (e) => {
-		logger.errorLog(e, "Socket error");
+		logger.errorLog(e, 'Socket error');
 	});
 
 	socket.on('userinput', (data) => {
@@ -114,15 +130,15 @@ io.sockets.on('connection', function (socket) {
 		if(!serv) return;
 		if(serv.authenticated == false) return;
 
-		logger.debugLog("["+socket.id+"] ->", data);
+		logger.debugLog('['+socket.id+'] ->', data);
 
 		serv.handler.handleUserLine(data);
-	})
+	});
 
 	socket.on('irc_create', function(connectiondata) {
-		logger.debugLog(socket.id+" created irc connection: ", connectiondata);
+		logger.debugLog(socket.id+' created irc connection: ', connectiondata);
 
-		socket.emit('act_client', {type: 'connect_message', message: "Connecting to server..", error: false});
+		socket.emit('act_client', {type: 'connect_message', message: 'Connecting to server..', error: false});
 
 		let newConnection = new irclib.IRCConnection(connectiondata, config.client, 
 			{
@@ -137,7 +153,7 @@ io.sockets.on('connection', function (socket) {
 		connections[socket.id][connectiondata.server] = newConnection;
 
 		newConnection.on('authenticated', () => {
-			socket.emit('act_client', {type: "event_connect", address: connectiondata.server, network: newConnection.data.network,
+			socket.emit('act_client', {type: 'event_connect', address: connectiondata.server, network: newConnection.data.network,
 										supportedModes: newConnection.data.supportedModes, nickname: newConnection.config.nickname,
 										max_channel_length: newConnection.data.max_channel_length});
 
@@ -146,11 +162,11 @@ io.sockets.on('connection', function (socket) {
 
 		if(config.server.debug) {
 			newConnection.on('line', function(line) {
-				logger.debugLog("["+socket.id+"] <-", line);
+				logger.debugLog('['+socket.id+'] <-', line);
 			});
 
 			newConnection.on('debug_log', function(data) {
-				logger.debugLog("["+socket.id+"] <-", data);
+				logger.debugLog('['+socket.id+'] <-', data);
 			});
 		}
 
@@ -159,7 +175,7 @@ io.sockets.on('connection', function (socket) {
 
 			if(newConnection.authenticated == false)
 				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
-					message: "Failed to connect to the server!", error: true});
+					message: 'Failed to connect to the server!', error: true});
 		});
 
 		newConnection.on('pass_to_client', (data) => {
@@ -171,7 +187,7 @@ io.sockets.on('connection', function (socket) {
 
 			if(newConnection.authenticated == false)
 				socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
-					message: "Failed to connect to the server!", error: true});
+					message: 'Failed to connect to the server!', error: true});
 			else
 				socket.emit('act_client', {type: 'event_server_quit', server: connectiondata.server});
 		});
