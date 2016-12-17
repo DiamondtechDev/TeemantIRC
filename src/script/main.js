@@ -1,11 +1,11 @@
 const themes = require('./theme.js');
-const stylize = require('./colorparser.js');
 
 window.irc = {
 	socketUp: false,
 	primaryFrame: null,
 	config: {
 		colors: true,
+		channelify: true,
 		sharedInput: false,
 		timestamps: true,
 		timestampFormat: 'HH:mm:ss',
@@ -13,6 +13,7 @@ window.irc = {
 		colorNicklist: false,
 		scrollOnResize: true,
 		scrollOnFocus: true,
+		emoji: true,
 		theme: 'default'
 	},
 	serverData: {},
@@ -35,7 +36,8 @@ const colorizer = {
 	},
 	strip: function(message) {
 		return message.replace(/(\x03\d{0,2}(,\d{0,2})?)/g, '').replace(/[\x0F\x02\x16\x1F]/g, '');
-	}
+	},
+	stylize: require('./colorparser.js')
 };
 
 let urlParams = {};
@@ -150,6 +152,50 @@ Date.prototype.format = function (format, utc){
 	return format;
 };
 
+const processors = {
+	inline_color: function (text) {
+		// TODO: Figure out how to make hex colors behave
+		//const hexRegex = /(^|[^&])(\#[0-9a-f]{6};?)(?!\w)/gmi;
+		const rgbRegex = /(.?)(rgba?\((?:\s*\d+\s*,){2}\s*\d+\s*(?:,\s*[\d.]+\s*)?\);?)/gmi;
+		const substitute = '$1$2 <div class="color_sample" style="background-color:$2"></div>';
+		//text = text.replace(hexRegex, substitute);
+		text = text.replace(rgbRegex, substitute);
+		return text;
+	},
+	linkify(text) {
+		const re = /\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:''.,<>?«»“”‘’]))/gi;
+		return text.replace(re, function(url) {
+			let href = url;
+			if (url.indexOf('http') !== 0) {
+				href = 'http://' + url;
+			}
+			return '<a href="' + href + '" target="_blank" rel="nofollow">' + url + '</a>';
+		});
+	},
+	channelify(text) {
+		if(!irc.config.channelify) return text;
+
+		const channelRegex = /(^|[\s,.:;?!"'()+@-\~%])(#+[^\x00\x07\r\n\s,:]*[a-z][^\x00\x07\r\n\s,:]*)/gmi;
+		const substitute = '$1<a onclick="irc.joinChannel(\'$2\');" class="channel">$2</a>';
+
+        return text.replace(channelRegex, substitute);
+	},
+	emojify(text) {
+		if (irc.config.emoji === true && window.emojione !== undefined) {
+            // Emoji live in the D800-DFFF surrogate plane; only bother passing
+            // this range to CPU-expensive unicodeToImage();
+            const emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
+            if (emojiRegex.test(text)) {
+                return emojione.unicodeToImage(text);
+            } else {
+                return text;
+            }
+        } else {
+            return text;
+        }
+	}
+};
+
 function whoisMessage(whoisData, buffer) {
 	let messages = [];
 	for(let key in whoisData) {
@@ -239,20 +285,6 @@ function match(word, array) {
 	);
 }
 
-function linkify(text) {
-	// see http://daringfireball.net/2010/07/improved_regex_for_matching_urls
-	let re = /\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:''.,<>?«»“”‘’]))/gi;
-	let parsed = text.replace(re, function(url) {
-		// turn into a link
-		let href = url;
-		if (url.indexOf('http') !== 0) {
-			href = 'http://' + url;
-		}
-		return '<a href="' + href + '" target="_blank" rel="nofollow">' + url + '</a>';
-	});
-	return parsed;
-}
-
 function serialize(obj) {
 	let str = [];
 	for(let p in obj)
@@ -300,7 +332,7 @@ function objectGetKey(obj, value) {
 
 let composer = {
 	message: {
-		simple: function(time, sender, message, type) {
+		simple: function(time, sender, message, type, server) {
 			let element = document.createElement('div');
 			element.className = 'message type_simple m_'+type;
 
@@ -308,11 +340,14 @@ let composer = {
 				element.innerHTML += '<span class="timestamp">'+time.format(irc.config.timestampFormat)+'</span>&nbsp;';
 
 			if(irc.config.colors)
-				message = stylize(message);
+				message = colorizer.stylize(message);
 			else
 				message = colorizer.strip(message);
 
-			message = linkify(message);
+			message = processors.inline_color(message);
+			message = processors.channelify(message);
+			message = processors.linkify(message);
+			message = processors.emojify(message);
 
 			switch(type) {
 				case 'mode':
@@ -434,6 +469,15 @@ let composer = {
 
 		return builder;
 	}
+};
+
+// onclick food
+window.irc.joinChannel = (channel) => {
+	let buf = irc.chat.getActiveChatBuffer();
+	if(!buf || !buf.server) return;
+
+	irc.socket.emit('userinput', {command: 'join', server: buf.server, message: '', arguments: [channel]});
+	return false;
 };
 
 /*****************************\
@@ -948,9 +992,9 @@ class ChatBuffer {
 		if(this.topic != null && this.topic != '') {
 			addClass(clientdom.chat, 'vtopic');
 			if(irc.config.colors)
-				clientdom.topicbar.innerHTML = linkify(stylize(this.topic));
+				clientdom.topicbar.innerHTML = processors.linkify(processors.channelify(colorizer.stylize(this.topic)));
 			else
-				clientdom.topicbar.innerHTML = linkify(colorizer.strip(this.topic));
+				clientdom.topicbar.innerHTML = processors.linkify(processors.channelify(colorizer.strip(this.topic)));
 		}
 
 		this.renderMessages();
@@ -989,7 +1033,7 @@ class ChatBuffer {
 	}
 
 	appendMessage(meta) {
-		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type);
+		let mesgConstr = composer.message[irc.chatType](meta.time, meta.sender, meta.message, meta.type, this.server);
 
 		if(irc.serverData[this.server]) {
 			let mynick = irc.serverData[this.server].my_nick;
@@ -1008,9 +1052,9 @@ class ChatBuffer {
 	topicChange(topic) {
 		if(this.active) {
 			if(irc.config.colors)
-				clientdom.topicbar.innerHTML = linkify(stylize(topic));
+				clientdom.topicbar.innerHTML = processors.linkify(colorizer.stylize(topic));
 			else
-				clientdom.topicbar.innerHTML = linkify(colorizer.strip(topic));
+				clientdom.topicbar.innerHTML = processors.linkify(colorizer.strip(topic));
 
 			if(this.topic == null)
 				addClass(clientdom.chat, 'vtopic');

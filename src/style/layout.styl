@@ -160,15 +160,31 @@ body
                         overflow: auto
                         word-wrap: break-word
                 .letterbox
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    overflow-y: auto;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    padding: 5px;
+                    position: absolute
+                    top: 0
+                    bottom: 0
+                    left: 0
+                    right: 0
+                    overflow-y: auto
+                    white-space: pre-wrap
+                    word-wrap: break-word
+                    padding: 5px
+                    .message
+                        a
+                            &.channel
+                                cursor: pointer
+                                text-decoration: underline
+                        .color_sample
+                            display: inline-block;
+                            width: 18px;
+                            height: 18px;
+                            margin-left: 4px;
+                            border-radius: 5px;
+                            vertical-align: bottom;
+                        .emojione
+                            width: 20px;
+                            height: 20px;
+                            vertical-align: sub;
                 .nicklist
                     width: 280px;
                     position: absolute;
