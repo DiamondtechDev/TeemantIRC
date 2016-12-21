@@ -35,8 +35,14 @@ function resolveAddress(address, force) {
 
 	new Promise((resolve, reject) => {
 		dns.resolve(address, (err, data) => {
+			if(address === '127.0.0.1' || address === '0.0.0.0' || address === 'localhost') {
+				logger.debugLog('** WEBIRC ** Ignoring localhost entry..');
+				return resolve('127.0.0.1');
+			}
+			
 			if(err!=null) return reject(err);
 			let ip = data.length > 0 ? data[0] : null;
+
 			if(ip) {
 				resolve(ip);
 			} else {
