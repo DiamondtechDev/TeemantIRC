@@ -12,6 +12,8 @@
 	realname="A Teemant User"
 	default_quit_msg="Teemant IRC"
 	default_part_msg="Bye!"
+	default_server="irc.icynet.ml"
+	default_port=6667
 	# Socket settings
 	secure_by_default=false
 	timeout=3000

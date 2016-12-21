@@ -90,6 +90,12 @@ io.sockets.on('connection', function (socket) {
 
 	logger.debugLog('clientID: {0} from: {1}'.format(socket.id, userip));
 
+	socket.emit('defaults', {
+		server: config.client.default_server,
+		port: config.client.default_port,
+		ssl: config.client.secure_by_default
+	});
+
 	// New object for connections
 	connections[socket.id] = {
 		host: {
@@ -103,11 +109,11 @@ io.sockets.on('connection', function (socket) {
 	hostQuery.then((arr) => {
 		if(arr.length > 0)
 			connections[socket.id].host.hostname = arr[0];
+
+		logger.debugLog('Hostname of {0} was determined to be {1}'.format(socket.id, connections[socket.id].host.hostname));
 	}).catch((err) => {
 		logger.debugLog('Host resolve for {0} failed: {1}'.format(socket.id, err)); 
 	});
-
-	logger.debugLog('Hostname of {0} was determined to be {1}'.format(socket.id, connections[socket.id].host.hostname));
 
 	socket.on('disconnect', function() {
 		for (let d in connections[socket.id]) {

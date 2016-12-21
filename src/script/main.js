@@ -40,8 +40,6 @@ const colorizer = {
 	stylize: require('./colorparser.js')
 };
 
-let urlParams = {};
-
 /*********************\
 |**                 **|
 |**    UTILITIES    **|
@@ -1312,6 +1310,7 @@ class IRCConnector {
 	constructor() {
 		this.formLocked = false;
 		this.canClose = false;
+		this.defaults = {};
 
 		clientdom.connector.form.onsubmit = (e) => {
 			if(this.formLocked) {
@@ -1335,7 +1334,14 @@ class IRCConnector {
 		};
 	}
 
-	fillFormFromURI() {
+	fillFormFromURI(urlParams) {
+		if(this.defaults.server)
+			clientdom.connector.server.value = this.defaults.server;
+		if(this.defaults.port)
+			clientdom.connector.port.value = this.defaults.port;
+		if(this.defaults.ssl)
+			clientdom.connector.secure.checked = this.defaults.ssl;
+
 		for(let param in urlParams) {
 			let value = urlParams[param];
 
@@ -1376,6 +1382,7 @@ class IRCConnector {
 					break;
 			}
 		}
+
 		if(window.location.hash)
 			clientdom.connector.channel.value = window.location.hash;
 		
@@ -1393,6 +1400,10 @@ class IRCConnector {
 			if(validators.iporhost(proposed))
 				clientdom.connector.server.value = proposed;
 		}
+	}
+
+	defaultTo(data) {
+		this.defaults = data;
 	}
 
 	getDataFromForm() {
@@ -2043,19 +2054,17 @@ function parseURL() {
 		decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },
 		query  = window.location.search.substring(1);
 
-	urlParams = {};
+	let urlParams = {};
 	while (match = search.exec(query))
 		urlParams[decode(match[1])] = decode(match[2]);
 
-	irc.auther.fillFormFromURI();
+	irc.auther.fillFormFromURI(urlParams);
 }
 
 function stopWarnings() {
 	if(Object.keys(irc.serverData).length == 0)
 		window.onbeforeunload = null;
 }
-
-window.onpopstate = parseURL;
 
 window.onresize = function() {
 	if(irc.config.scrollOnResize)
@@ -2104,8 +2113,13 @@ window.onload = function() {
 	irc.auther = new IRCConnector();
 	irc.chat = new IRCChatWindow();
 
-	parseURL();
 	irc.settings.setInitialValues();
+
+	irc.socket.on('defaults', function (data) {
+		irc.auther.defaultTo(data);
+		parseURL();
+		window.onpopstate = parseURL;
+	});
 
 	irc.socket.on('connect', function (data) {
 		irc.socketUp = true;

@@ -42,9 +42,9 @@ module.exports.printRuntimeStats = function(runtime_stats, connections) {
 	if(users != 0) // Don't divide by zero lmao
 		serversPerUser = servers/users;
 
-	console.log(date+': Currently connected users: {0};' +
-		'IRC server connections: {1};' +
-		'Average servers per user: {2};' +
-		'Total connections made: {3};' +
-		'Uptime: {4}s;'.format(users, servers, serversPerUser, runtime_stats.connectionsMade, process.uptime()));
+	console.log(date+(': Currently connected users: {0}. ' +
+		'IRC server connections: {1}. ' +
+		'Average servers per user: {2}. ' +
+		'Total connections made: {3}. ' +
+		'Uptime: {4}s;').format(users, servers, serversPerUser, runtime_stats.connectionsMade, process.uptime()));
 };
