@@ -48,17 +48,16 @@ router.get('/', function(req, res){
 	res.sendFile(pubdir+'/document/index.html');
 });
 
-router.get('/:server', function(req, res){
+router.get('/:server?*', function(req, res){
 	res.sendFile(pubdir+'/document/index.html');
 });
 
 app.use('/', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
-app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
-
 app.use('/', express.static(pubdir+'/icons', { maxAge: 365*24*60*60*1000 }));
-app.use('/:server', express.static(pubdir+'/icons', { maxAge: 365*24*60*60*1000 }));
-
 app.use('/', express.static(__dirname+'/static', { maxAge: 365*24*60*60*1000 }));
+
+app.use('/:server', express.static(pubdir, { maxAge: 365*24*60*60*1000 }));
+app.use('/:server', express.static(pubdir+'/icons', { maxAge: 365*24*60*60*1000 }));
 app.use('/:server', express.static(pubdir+'/static', { maxAge: 365*24*60*60*1000 }));
 
 app.use('/', router);
