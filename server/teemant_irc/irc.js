@@ -429,7 +429,7 @@ class IRCConnection extends EventEmitter {
 			autojoin: [],
 			secure: globalConfig.secure_by_default,
 			password: '',
-			address: '0.0.0.0',
+			address: providedInfo.server,
 			rejectUnauthorized: globalConfig.rejectUnauthorizedCertificates
 		};
 
