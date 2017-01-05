@@ -145,6 +145,11 @@ io.sockets.on('connection', function (socket) {
 
 		socket.emit('act_client', {type: 'connect_message', message: 'Connecting to server..', error: false});
 
+		if (connectiondata.port === null || connectiondata.server === null) {
+			return socket.emit('act_client', {type: 'connect_message', server: connectiondata.server, 
+					message: 'Failed to connect to the server!', error: true});
+		}
+
 		let newConnection = new irclib.IRCConnection(connectiondata, config.client, 
 			{
 				authenticationSteps: [
